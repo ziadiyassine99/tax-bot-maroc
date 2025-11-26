@@ -103,11 +103,25 @@ def apply_golden_theme():
         
         /* Chat styling */
         .stChatMessage {
-            background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%);
-            border: 1px solid #D4A574;
+            background: linear-gradient(135deg, #FFFDF8 0%, #FFF8EC 100%) !important;
+            border: 2px solid #C9A86C !important;
             border-radius: 16px;
             padding: 1rem;
             margin: 0.5rem 0;
+        }
+        
+        /* Chat message text - DARK and readable */
+        .stChatMessage p, .stChatMessage span, .stChatMessage div {
+            color: #2D2A26 !important;
+        }
+        
+        .stChatMessage strong {
+            color: #1A1815 !important;
+        }
+        
+        /* Markdown in chat */
+        .stMarkdown p {
+            color: #2D2A26 !important;
         }
         
         /* Chat input */
