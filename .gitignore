@@ -3,8 +3,10 @@
 .env
 *.env
 
-# Base vectorielle (sera recréée au déploiement)
+# Bases vectorielles (seront recréées au déploiement)
 chroma_db/
+chroma_db_cgi/
+chroma_db_cdt/
 
 # Python cache
 __pycache__/
