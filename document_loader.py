@@ -1,16 +1,16 @@
 """
 Document loader module for PDF processing.
-Handles loading and chunking of PDF documents.
+Handles loading and chunking of PDF documents for any module.
 """
 
 import os
-from typing import List
+from typing import List, Dict, Any
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 
-from config import ChunkingConfig, DocumentConfig
+from config import ChunkingConfig
 
 
 class PDFLoadError(Exception):
@@ -20,7 +20,7 @@ class PDFLoadError(Exception):
 
 class DocumentProcessor:
     """
-    Handles PDF document loading and text chunking.
+    Handles PDF document loading and text chunking for any module.
     
     Attributes:
         pdf_path: Path to the PDF file
@@ -30,7 +30,7 @@ class DocumentProcessor:
     
     def __init__(
         self,
-        pdf_path: str = DocumentConfig.PDF_PATH,
+        pdf_path: str,
         chunk_size: int = ChunkingConfig.CHUNK_SIZE,
         chunk_overlap: int = ChunkingConfig.CHUNK_OVERLAP
     ):
@@ -57,12 +57,7 @@ class DocumentProcessor:
         )
     
     def validate_pdf_exists(self) -> bool:
-        """
-        Check if the PDF file exists.
-        
-        Returns:
-            bool: True if file exists, False otherwise
-        """
+        """Check if the PDF file exists."""
         return os.path.exists(self.pdf_path)
     
     def load_pdf(self) -> List[Document]:
@@ -78,7 +73,7 @@ class DocumentProcessor:
         if not self.validate_pdf_exists():
             raise PDFLoadError(
                 f"Le fichier PDF '{self.pdf_path}' n'a pas été trouvé. "
-                "Veuillez placer le fichier 'cgi_maroc.pdf' dans le répertoire racine."
+                f"Veuillez placer le fichier dans le répertoire racine."
             )
         
         try:
@@ -111,7 +106,6 @@ class DocumentProcessor:
         """
         chunks = self._text_splitter.split_documents(documents)
         
-        # Add metadata to each chunk
         for i, chunk in enumerate(chunks):
             chunk.metadata["chunk_id"] = i
             chunk.metadata["source"] = self.pdf_path
@@ -132,17 +126,14 @@ class DocumentProcessor:
         return self.split_documents(documents)
 
 
-def get_document_processor(
-    pdf_path: str = DocumentConfig.PDF_PATH
-) -> DocumentProcessor:
+def create_document_processor(module_config: Dict[str, Any]) -> DocumentProcessor:
     """
-    Factory function to create a DocumentProcessor.
+    Factory function to create a DocumentProcessor for a specific module.
     
     Args:
-        pdf_path: Path to the PDF file
+        module_config: Module configuration dictionary
         
     Returns:
         DocumentProcessor: Configured document processor instance
     """
-    return DocumentProcessor(pdf_path=pdf_path)
-
+    return DocumentProcessor(pdf_path=module_config["pdf_path"])

@@ -1,14 +1,15 @@
 """
-Main Streamlit application for the RAG Tax Bot.
-Provides a chat interface for querying the Moroccan Tax Code (CGI).
+IYYA - Assistant Juridique Marocain
+Multi-module legal assistant for Moroccan law (CGI, Code du Travail, etc.)
 """
 
 import streamlit as st
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any
 
+from config import MODULES, get_module_config
 from document_loader import DocumentProcessor, PDFLoadError
-from vector_store import VectorStoreManager
-from rag_chain import RAGChainBuilder, RAGQueryHandler
+from vector_store import VectorStoreManager, create_vector_store_manager
+from rag_chain import RAGChainBuilder, RAGQueryHandler, create_rag_chain
 
 
 # =============================================================================
@@ -16,306 +17,429 @@ from rag_chain import RAGChainBuilder, RAGQueryHandler
 # =============================================================================
 
 st.set_page_config(
-    page_title="CGI Maroc - Assistant Fiscal",
-    page_icon="📚",
+    page_title="IYYA - Assistant Juridique",
+    page_icon="⚖️",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
 
 # =============================================================================
-# Styling
+# Golden Theme Styling
 # =============================================================================
 
-def apply_custom_styles():
-    """Apply custom CSS styles to the application."""
+def apply_golden_theme():
+    """Apply the golden/beige IYYA theme."""
     st.markdown("""
         <style>
-        /* Main container styling */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        /* Main background - warm beige gradient */
         .stApp {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(180deg, #E8DCC8 0%, #D4C4A8 50%, #C9B896 100%);
         }
         
-        /* Chat message styling */
+        /* Hide Streamlit branding */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        
+        /* Main title styling */
+        .main-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #8B6914;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            font-family: 'Inter', sans-serif;
+            color: #6B5A3E;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 400;
+            margin-bottom: 2rem;
+        }
+        
+        /* Module cards */
+        .module-card {
+            background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%);
+            border: 2px solid #D4A574;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 0.75rem 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 105, 20, 0.15);
+        }
+        
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(139, 105, 20, 0.25);
+            border-color: #B8860B;
+        }
+        
+        .module-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .module-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #5D4E37;
+            margin-bottom: 0.25rem;
+        }
+        
+        .module-desc {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            color: #7A6B5A;
+        }
+        
+        /* Chat styling */
         .stChatMessage {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
+            background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%);
+            border: 1px solid #D4A574;
+            border-radius: 16px;
             padding: 1rem;
             margin: 0.5rem 0;
         }
         
-        /* Title styling */
-        .main-title {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(120deg, #e94560 0%, #ff6b6b 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-align: center;
-            margin-bottom: 0.5rem;
+        /* Chat input */
+        .stChatInput > div {
+            background: #FFF8EC !important;
+            border: 2px solid #D4A574 !important;
+            border-radius: 12px !important;
         }
         
-        .subtitle {
-            font-family: 'Segoe UI', sans-serif;
-            color: #a0a0a0;
-            text-align: center;
-            font-size: 1rem;
-            margin-bottom: 2rem;
+        /* Buttons */
+        .stButton > button {
+            background: linear-gradient(135deg, #D4A574 0%, #B8860B 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 2rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 105, 20, 0.3);
+        }
+        
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 105, 20, 0.4);
         }
         
         /* Success/Error messages */
-        .status-success {
-            background-color: rgba(46, 204, 113, 0.1);
-            border-left: 4px solid #2ecc71;
-            padding: 1rem;
-            border-radius: 4px;
-        }
-        
-        .status-error {
-            background-color: rgba(231, 76, 60, 0.1);
-            border-left: 4px solid #e74c3c;
-            padding: 1rem;
-            border-radius: 4px;
-        }
-        
-        /* Sidebar styling */
-        .sidebar-info {
-            background-color: rgba(255, 255, 255, 0.05);
-            padding: 1rem;
+        .stSuccess {
+            background: linear-gradient(135deg, #D4EDDA 0%, #C3E6CB 100%);
+            border-left: 4px solid #28A745;
             border-radius: 8px;
-            margin-top: 1rem;
         }
         
-        /* Input styling */
-        .stTextInput > div > div > input {
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .stError {
+            background: linear-gradient(135deg, #F8D7DA 0%, #F5C6CB 100%);
+            border-left: 4px solid #DC3545;
             border-radius: 8px;
+        }
+        
+        /* Sidebar */
+        .css-1d391kg, [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #F5EBD7 0%, #E8DCC8 100%);
+        }
+        
+        /* Divider */
+        hr {
+            border-color: #D4A574;
+            opacity: 0.5;
+        }
+        
+        /* Section header */
+        .section-header {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #8B6914;
+            text-align: center;
+            margin: 2rem 0 1rem 0;
+            padding: 0.5rem;
+            border-bottom: 2px solid #D4A574;
+        }
+        
+        /* Back button area */
+        .back-button {
+            margin-bottom: 1rem;
+        }
+        
+        /* Powered by footer */
+        .powered-by {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            color: #7A6B5A;
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+        
+        .powered-by a {
+            color: #8B6914;
+            text-decoration: none;
+            font-weight: 600;
         }
         </style>
     """, unsafe_allow_html=True)
 
 
 # =============================================================================
-# Cached Resource Loading
+# Session State Management
 # =============================================================================
 
-@st.cache_resource(show_spinner=False)
-def initialize_document_processor() -> DocumentProcessor:
-    """
-    Initialize and cache the document processor.
-    
-    Returns:
-        DocumentProcessor: Cached document processor instance
-    """
-    return DocumentProcessor()
-
-
-@st.cache_resource(show_spinner=False)
-def initialize_vector_store_manager() -> VectorStoreManager:
-    """
-    Initialize and cache the vector store manager.
-    
-    Returns:
-        VectorStoreManager: Cached vector store manager instance
-    """
-    return VectorStoreManager()
-
-
-@st.cache_resource(show_spinner=False)
-def load_and_index_documents(
-    _doc_processor: DocumentProcessor,
-    _vs_manager: VectorStoreManager
-) -> Tuple[bool, Optional[str], int]:
-    """
-    Load PDF documents and create/load vector store.
-    
-    Args:
-        _doc_processor: Document processor instance (underscore prefix for cache)
-        _vs_manager: Vector store manager instance
-        
-    Returns:
-        Tuple of (success: bool, error_message: Optional[str], num_chunks: int)
-    """
-    try:
-        # Check if vector store already exists
-        if _vs_manager.vector_store_exists():
-            _vs_manager.load_vector_store()
-            return True, None, -1  # -1 indicates loaded from cache
-        
-        # Load and process documents
-        documents = _doc_processor.load_and_split()
-        
-        # Create vector store
-        _vs_manager.create_vector_store(documents)
-        
-        return True, None, len(documents)
-        
-    except PDFLoadError as e:
-        return False, str(e), 0
-    except Exception as e:
-        return False, f"Erreur inattendue: {str(e)}", 0
-
-
-@st.cache_resource(show_spinner=False)
-def initialize_rag_chain(
-    _vs_manager: VectorStoreManager
-) -> RAGChainBuilder:
-    """
-    Initialize and cache the RAG chain.
-    
-    Args:
-        _vs_manager: Vector store manager instance
-        
-    Returns:
-        RAGChainBuilder: Cached RAG chain builder
-    """
-    return RAGChainBuilder(_vs_manager)
-
-
-# =============================================================================
-# UI Components
-# =============================================================================
-
-def render_header():
-    """Render the application header."""
-    st.markdown('<h1 class="main-title">📚 Assistant CGI Maroc</h1>', unsafe_allow_html=True)
-    st.markdown(
-        '<p class="subtitle">Expert fiscaliste virtuel spécialisé dans le Code Général des Impôts</p>',
-        unsafe_allow_html=True
-    )
-
-
-def render_sidebar():
-    """Render the sidebar with application info."""
-    with st.sidebar:
-        st.header("ℹ️ À propos")
-        st.markdown("""
-        Cet assistant vous aide à naviguer dans le **Code Général des Impôts du Maroc**.
-        
-        **Fonctionnalités :**
-        - 🔍 Recherche sémantique dans le CGI
-        - 📖 Citations des articles pertinents
-        - 💬 Interface de chat intuitive
-        
-        **Comment utiliser :**
-        1. Posez votre question fiscale
-        2. L'assistant recherche dans le CGI
-        3. Recevez une réponse avec les articles cités
-        """)
-        
-        st.divider()
-        
-        st.markdown("**Exemples de questions :**")
-        example_questions = [
-            "Quel est le taux d'IS applicable aux sociétés ?",
-            "Quelles sont les exonérations de TVA ?",
-            "Comment calculer l'IR sur les salaires ?",
-            "Quelles sont les obligations déclaratives des entreprises ?"
-        ]
-        for question in example_questions:
-            st.markdown(f"- _{question}_")
-        
-        st.divider()
-        st.caption("Propulsé par OpenAI GPT-4o et LangChain")
-
-
-def render_initialization_status(success: bool, error: Optional[str], num_chunks: int):
-    """
-    Render the initialization status message.
-    
-    Args:
-        success: Whether initialization was successful
-        error: Error message if any
-        num_chunks: Number of document chunks created (-1 if loaded from cache)
-    """
-    if success:
-        if num_chunks == -1:
-            st.success("✅ Base de connaissances chargée depuis le cache")
-        else:
-            st.success(f"✅ Base de connaissances créée ({num_chunks} segments indexés)")
-    else:
-        st.error(f"❌ {error}")
-        st.info(
-            "💡 Assurez-vous que le fichier 'cgi_maroc.pdf' est présent "
-            "dans le répertoire de l'application."
-        )
-
-
-def initialize_chat_history():
-    """Initialize the chat history in session state."""
+def init_session_state():
+    """Initialize session state variables."""
+    if "current_module" not in st.session_state:
+        st.session_state.current_module = None
     if "messages" not in st.session_state:
-        st.session_state.messages = [
+        st.session_state.messages = {}
+    if "module_initialized" not in st.session_state:
+        st.session_state.module_initialized = {}
+
+
+def set_current_module(module_id: str):
+    """Set the current active module."""
+    st.session_state.current_module = module_id
+    if module_id not in st.session_state.messages:
+        module_config = get_module_config(module_id)
+        st.session_state.messages[module_id] = [
             {
                 "role": "assistant",
-                "content": (
-                    "Bonjour ! Je suis votre assistant spécialisé dans le "
-                    "Code Général des Impôts du Maroc. 🇲🇦\n\n"
-                    "Posez-moi vos questions fiscales et je vous répondrai "
-                    "en citant les articles pertinents du CGI."
-                )
+                "content": f"Bonjour ! Je suis votre assistant spécialisé dans le **{module_config['name']}**. 🇲🇦\n\nPosez-moi vos questions et je vous répondrai en citant les articles pertinents."
             }
         ]
 
 
-def render_chat_history():
-    """Render the chat message history."""
-    for message in st.session_state.messages:
+def go_back_to_home():
+    """Return to the home page."""
+    st.session_state.current_module = None
+
+
+# =============================================================================
+# Cached Resources
+# =============================================================================
+
+@st.cache_resource(show_spinner=False)
+def load_module_resources(module_id: str) -> Tuple[bool, Optional[str], int, Optional[VectorStoreManager]]:
+    """
+    Load and cache resources for a specific module.
+    
+    Returns:
+        Tuple of (success, error_message, num_chunks, vector_store_manager)
+    """
+    try:
+        module_config = get_module_config(module_id)
+        
+        # Create document processor
+        doc_processor = DocumentProcessor(pdf_path=module_config["pdf_path"])
+        
+        # Create vector store manager
+        vs_manager = create_vector_store_manager(module_config)
+        
+        # Check if vector store exists
+        if vs_manager.vector_store_exists():
+            vs_manager.load_vector_store()
+            return True, None, -1, vs_manager
+        
+        # Load and process documents
+        documents = doc_processor.load_and_split()
+        
+        # Create vector store
+        vs_manager.create_vector_store(documents)
+        
+        return True, None, len(documents), vs_manager
+        
+    except PDFLoadError as e:
+        return False, str(e), 0, None
+    except Exception as e:
+        return False, f"Erreur inattendue: {str(e)}", 0, None
+
+
+@st.cache_resource(show_spinner=False)
+def get_rag_chain(_vs_manager: VectorStoreManager, module_id: str) -> RAGChainBuilder:
+    """Get or create the RAG chain for a module."""
+    module_config = get_module_config(module_id)
+    return create_rag_chain(_vs_manager, module_config)
+
+
+# =============================================================================
+# Home Page
+# =============================================================================
+
+def render_home_page():
+    """Render the home page with module selection."""
+    
+    # Logo and title
+    st.markdown('<h1 class="main-title">⚖️ IYYA</h1>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="subtitle">Votre assistant juridique intelligent<br>basé sur la législation marocaine en vigueur</p>',
+        unsafe_allow_html=True
+    )
+    
+    st.markdown("---")
+    
+    # Section header
+    st.markdown('<div class="section-header">Choisissez votre module</div>', unsafe_allow_html=True)
+    
+    # Module cards in columns
+    cols = st.columns(2)
+    
+    for idx, (module_id, module_config) in enumerate(MODULES.items()):
+        with cols[idx % 2]:
+            # Create a card-like button
+            card_html = f"""
+            <div class="module-card">
+                <div class="module-icon">{module_config['icon']}</div>
+                <div class="module-name">{module_config['name']}</div>
+                <div class="module-desc">{module_config['description']}</div>
+            </div>
+            """
+            st.markdown(card_html, unsafe_allow_html=True)
+            
+            if st.button(
+                f"Accéder au {module_config['short_name']}",
+                key=f"btn_{module_id}",
+                use_container_width=True
+            ):
+                set_current_module(module_id)
+                st.rerun()
+    
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        '<div class="powered-by">Powered by <a href="https://wearebeebay.com" target="_blank">wearebeebay</a></div>',
+        unsafe_allow_html=True
+    )
+
+
+# =============================================================================
+# Chat Page
+# =============================================================================
+
+def render_chat_page(module_id: str):
+    """Render the chat interface for a specific module."""
+    
+    module_config = get_module_config(module_id)
+    
+    # Sidebar with info and back button
+    with st.sidebar:
+        st.markdown(f"### {module_config['icon']} {module_config['name']}")
+        st.markdown(f"_{module_config['description']}_")
+        
+        st.markdown("---")
+        
+        if st.button("← Retour à l'accueil", use_container_width=True):
+            go_back_to_home()
+            st.rerun()
+        
+        st.markdown("---")
+        
+        st.markdown("**Exemples de questions :**")
+        if module_id == "cgi":
+            examples = [
+                "Quel est le taux d'IS ?",
+                "Exonérations de TVA ?",
+                "Régime auto-entrepreneur ?"
+            ]
+        else:
+            examples = [
+                "Durée du préavis ?",
+                "Calcul des congés payés ?",
+                "Indemnité de licenciement ?"
+            ]
+        for ex in examples:
+            st.markdown(f"- _{ex}_")
+        
+        st.markdown("---")
+        st.markdown(
+            '<div class="powered-by">Powered by <a href="https://wearebeebay.com">wearebeebay</a></div>',
+            unsafe_allow_html=True
+        )
+    
+    # Main content
+    st.markdown(
+        f'<h1 class="main-title">{module_config["icon"]} {module_config["short_name"]}</h1>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f'<p class="subtitle">{module_config["name"]}</p>',
+        unsafe_allow_html=True
+    )
+    
+    # Load module resources
+    with st.spinner(f"🔄 Chargement de la base {module_config['short_name']}..."):
+        success, error, num_chunks, vs_manager = load_module_resources(module_id)
+    
+    # Show status
+    if success:
+        if num_chunks == -1:
+            st.success(f"✅ Base {module_config['short_name']} chargée")
+        else:
+            st.success(f"✅ Base {module_config['short_name']} créée ({num_chunks} segments)")
+    else:
+        st.error(f"❌ {error}")
+        st.info(f"💡 Vérifiez que '{module_config['pdf_path']}' est présent.")
+        st.stop()
+    
+    # Initialize RAG chain
+    rag_chain = get_rag_chain(vs_manager, module_id)
+    query_handler = RAGQueryHandler(rag_chain)
+    
+    st.markdown("---")
+    
+    # Chat history
+    for message in st.session_state.messages.get(module_id, []):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-
-
-def handle_user_input(query_handler: RAGQueryHandler):
-    """
-    Handle user input and generate responses.
     
-    Args:
-        query_handler: The RAG query handler for processing questions
-    """
-    if prompt := st.chat_input("Posez votre question sur le CGI..."):
-        # Add user message to history
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    # Chat input
+    if prompt := st.chat_input(f"Posez votre question sur le {module_config['short_name']}..."):
+        # Add user message
+        st.session_state.messages[module_id].append({"role": "user", "content": prompt})
         
-        # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
         
-        # Generate and display assistant response
+        # Generate response
         with st.chat_message("assistant"):
-            # Use different spinner text based on query type
             with st.spinner("Réflexion en cours..."):
                 result = query_handler.ask(prompt)
                 
                 if result["success"]:
                     response = result["answer"]
                     
-                    # Only add source pages for non-conversational queries
-                    is_conversational = result.get("is_conversational", False)
-                    if not is_conversational and result["sources"]:
+                    # Add sources for non-conversational queries
+                    if not result.get("is_conversational", False) and result["sources"]:
                         pages = [str(p) for p in result["sources"] if p != "N/A"]
                         if pages:
-                            # Sort pages numerically
                             sorted_pages = sorted(set(pages), key=lambda x: int(x) if x.isdigit() else 0)
                             response += f"\n\n📄 _Sources: Pages {', '.join(sorted_pages)}_"
                 else:
-                    response = (
-                        f"⚠️ Une erreur s'est produite: {result['error']}\n\n"
-                        "Veuillez réessayer ou reformuler votre question."
-                    )
+                    response = f"⚠️ Erreur: {result['error']}\n\nVeuillez réessayer."
                 
                 st.markdown(response)
         
-        # Add assistant message to history
-        st.session_state.messages.append({"role": "assistant", "content": response})
-
-
-def render_clear_chat_button():
-    """Render a button to clear chat history."""
+        # Add assistant message
+        st.session_state.messages[module_id].append({"role": "assistant", "content": response})
+    
+    # Clear chat button
+    st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         if st.button("🗑️ Nouvelle conversation", use_container_width=True):
-            st.session_state.messages = [st.session_state.messages[0]]
+            st.session_state.messages[module_id] = [st.session_state.messages[module_id][0]]
             st.rerun()
 
 
@@ -325,49 +449,14 @@ def render_clear_chat_button():
 
 def main():
     """Main application entry point."""
-    # Apply custom styles
-    apply_custom_styles()
+    apply_golden_theme()
+    init_session_state()
     
-    # Render header
-    render_header()
-    
-    # Render sidebar
-    render_sidebar()
-    
-    # Initialize components
-    doc_processor = initialize_document_processor()
-    vs_manager = initialize_vector_store_manager()
-    
-    # Load and index documents
-    with st.spinner("🔄 Chargement de la base de connaissances..."):
-        success, error, num_chunks = load_and_index_documents(doc_processor, vs_manager)
-    
-    # Show initialization status
-    render_initialization_status(success, error, num_chunks)
-    
-    if not success:
-        st.stop()
-    
-    # Initialize RAG chain
-    rag_chain = initialize_rag_chain(vs_manager)
-    query_handler = RAGQueryHandler(rag_chain)
-    
-    st.divider()
-    
-    # Initialize chat history
-    initialize_chat_history()
-    
-    # Render chat history
-    render_chat_history()
-    
-    # Handle user input
-    handle_user_input(query_handler)
-    
-    # Render clear chat button
-    st.divider()
-    render_clear_chat_button()
+    if st.session_state.current_module is None:
+        render_home_page()
+    else:
+        render_chat_page(st.session_state.current_module)
 
 
 if __name__ == "__main__":
     main()
-
