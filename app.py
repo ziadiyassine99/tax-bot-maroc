@@ -4,7 +4,7 @@ Multi-module legal assistant for Moroccan law (CGI, Code du Travail, etc.)
 """
 
 import streamlit as st
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple, Dict, Any
 
 from config import MODULES, get_module_config
 from document_loader import DocumentProcessor, PDFLoadError
@@ -215,98 +215,6 @@ def apply_golden_theme():
             text-decoration: none;
             font-weight: 600;
         }
-        
-        /* Clickable sources styling */
-        .sources-container {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%);
-            border-radius: 12px;
-            border: 1px solid #D4A574;
-        }
-        
-        .sources-label {
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            color: #6B5A3E;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-        
-        .source-content {
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
-            color: #3D3A36 !important;
-            line-height: 1.8;
-            padding: 1rem;
-            background: #FFFDF8 !important;
-            border-radius: 8px;
-            border-left: 4px solid #D4A574;
-            max-height: 350px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .source-header {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #8B6914;
-            padding: 0.5rem 0;
-            margin-bottom: 0.5rem;
-            border-bottom: 2px solid #D4A574;
-        }
-        
-        /* Popover button styling - golden theme */
-        [data-testid="stPopover"] > button {
-            background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%) !important;
-            border: 2px solid #D4A574 !important;
-            border-radius: 10px !important;
-            color: #5D4E37 !important;
-            font-weight: 500 !important;
-            padding: 0.5rem 1rem !important;
-            transition: all 0.3s ease !important;
-        }
-        
-        [data-testid="stPopover"] > button:hover {
-            background: linear-gradient(135deg, #F5EBD7 0%, #E8DCC8 100%) !important;
-            border-color: #B8860B !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 12px rgba(139, 105, 20, 0.2) !important;
-        }
-        
-        [data-testid="stPopover"] > button span {
-            color: #5D4E37 !important;
-        }
-        
-        /* Popover body styling */
-        [data-testid="stPopoverBody"] {
-            background: #FFFDF8 !important;
-            border: 2px solid #D4A574 !important;
-            border-radius: 12px !important;
-            padding: 0 !important;
-        }
-        
-        [data-testid="stPopoverBody"] > div {
-            background: #FFFDF8 !important;
-            padding: 1rem !important;
-        }
-        
-        [data-testid="stPopoverBody"] p, 
-        [data-testid="stPopoverBody"] span,
-        [data-testid="stPopoverBody"] div {
-            color: #3D3A36 !important;
-        }
-        
-        [data-testid="stPopoverBody"] strong {
-            color: #8B6914 !important;
-        }
-        
-        [data-testid="stPopoverBody"] hr {
-            border-color: #D4A574 !important;
-            margin: 0.5rem 0 !important;
-        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -323,8 +231,6 @@ def init_session_state():
         st.session_state.messages = {}
     if "module_initialized" not in st.session_state:
         st.session_state.module_initialized = {}
-    if "message_sources" not in st.session_state:
-        st.session_state.message_sources = {}  # Store sources per message
 
 
 def set_current_module(module_id: str):
@@ -390,95 +296,6 @@ def get_rag_chain(_vs_manager: VectorStoreManager, module_id: str) -> RAGChainBu
     """Get or create the RAG chain for a module."""
     module_config = get_module_config(module_id)
     return create_rag_chain(_vs_manager, module_config)
-
-
-# =============================================================================
-# Source Display Helper
-# =============================================================================
-
-def _format_source_content(content: str) -> str:
-    """
-    Clean and format source content for better readability.
-    
-    Args:
-        content: Raw content from the document
-        
-    Returns:
-        Formatted HTML-safe content
-    """
-    import re
-    import html
-    
-    # Escape HTML characters first
-    content = html.escape(content)
-    
-    # Remove inline page numbers that got mixed in (like 633, 634 at line endings)
-    content = re.sub(r'(\d{3,4})\s*(?=\n|$|[A-Z])', r' ', content)
-    
-    # Add line breaks for article headers
-    content = re.sub(r'(Article\s+\d+[^:]*:?)', r'<br><br><strong>\1</strong><br>', content)
-    
-    # Add line breaks for list items (like A.-, B.-, 1°, 2°, etc.)
-    content = re.sub(r'([A-Z]\.-)', r'<br><strong>\1</strong>', content)
-    content = re.sub(r'(\d+°)', r'<br>  • \1', content)
-    
-    # Add breaks for "Le taux", "Les opérations", etc.
-    content = re.sub(r'(Le taux|Les opérations|La taxe)', r'<br>\1', content)
-    
-    # Clean up multiple spaces
-    content = re.sub(r'\s{2,}', ' ', content)
-    
-    # Clean up multiple line breaks
-    content = re.sub(r'(<br>\s*){3,}', '<br><br>', content)
-    
-    return content.strip()
-
-
-def render_clickable_sources(sources: List[Dict[str, Any]], key_prefix: str = ""):
-    """
-    Render clickable source buttons with popovers showing the content.
-    
-    Args:
-        sources: List of source dictionaries with 'page' and 'content' keys
-        key_prefix: Unique prefix for button keys to avoid conflicts
-    """
-    if not sources:
-        return
-    
-    # Filter out invalid sources and ensure they are dictionaries
-    valid_sources = []
-    for source in sources:
-        if isinstance(source, dict) and "page" in source:
-            valid_sources.append(source)
-    
-    if not valid_sources:
-        return
-    
-    st.markdown("---")
-    st.markdown("📄 **Sources consultées** _(cliquez pour voir le contenu)_")
-    
-    # Create columns for source buttons
-    num_sources = len(valid_sources)
-    cols = st.columns(min(num_sources, 5))  # Max 5 columns
-    
-    for idx, source in enumerate(valid_sources):
-        col_idx = idx % len(cols)
-        with cols[col_idx]:
-            page_num = source.get("page", "N/A")
-            content = source.get("content", "Contenu non disponible")
-            
-            # Clean up the content for better readability
-            clean_content = _format_source_content(content)
-            
-            with st.popover(f"📖 Page {page_num}", use_container_width=True):
-                st.markdown(
-                    f'<div class="source-header">📄 Extrait - Page {page_num}</div>',
-                    unsafe_allow_html=True
-                )
-                st.markdown(
-                    f'<div class="source-content">{clean_content}</div>',
-                    unsafe_allow_html=True
-                )
 
 
 # =============================================================================
@@ -613,15 +430,9 @@ def render_chat_page(module_id: str):
     st.markdown("---")
     
     # Chat history
-    for idx, message in enumerate(st.session_state.messages.get(module_id, [])):
+    for message in st.session_state.messages.get(module_id, []):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            # Show clickable sources for assistant messages that have them
-            if message["role"] == "assistant":
-                sources_key = f"{module_id}_{idx}"
-                sources = st.session_state.message_sources.get(sources_key, [])
-                if sources:
-                    render_clickable_sources(sources, key_prefix=f"history_{idx}")
     
     # Chat input
     if prompt := st.chat_input(f"Posez votre question sur le {module_config['short_name']}..."):
@@ -638,30 +449,22 @@ def render_chat_page(module_id: str):
                 conversation_history = st.session_state.messages.get(module_id, [])
                 result = query_handler.ask(prompt, conversation_history=conversation_history)
                 
-                sources_to_display = []
-                
                 if result["success"]:
                     response = result["answer"]
                     
-                    # Get sources for non-conversational queries
+                    # Add sources for non-conversational queries
                     if not result.get("is_conversational", False) and result["sources"]:
-                        sources_to_display = result["sources"]
+                        pages = [str(p) for p in result["sources"] if p != "N/A"]
+                        if pages:
+                            sorted_pages = sorted(set(pages), key=lambda x: int(x) if x.isdigit() else 0)
+                            response += f"\n\n📄 _Sources: Pages {', '.join(sorted_pages)}_"
                 else:
                     response = f"⚠️ Erreur: {result['error']}\n\nVeuillez réessayer."
                 
                 st.markdown(response)
-                
-                # Display clickable sources
-                if sources_to_display:
-                    render_clickable_sources(sources_to_display, key_prefix="new")
         
         # Add assistant message
         st.session_state.messages[module_id].append({"role": "assistant", "content": response})
-        
-        # Store sources for this message (for history display)
-        message_idx = len(st.session_state.messages[module_id]) - 1
-        sources_key = f"{module_id}_{message_idx}"
-        st.session_state.message_sources[sources_key] = sources_to_display
     
     # Clear chat button
     st.markdown("---")
