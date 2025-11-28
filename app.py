@@ -236,25 +236,76 @@ def apply_golden_theme():
         .source-content {
             font-family: 'Inter', sans-serif;
             font-size: 0.9rem;
-            color: #2D2A26;
-            line-height: 1.6;
-            padding: 0.75rem;
-            background: #FFFDF8;
+            color: #3D3A36 !important;
+            line-height: 1.8;
+            padding: 1rem;
+            background: #FFFDF8 !important;
             border-radius: 8px;
-            border-left: 3px solid #D4A574;
-            max-height: 300px;
+            border-left: 4px solid #D4A574;
+            max-height: 350px;
             overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
         
-        /* Popover styling */
-        [data-testid="stPopover"] {
-            background: #FFF8EC !important;
+        .source-header {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #8B6914;
+            padding: 0.5rem 0;
+            margin-bottom: 0.5rem;
+            border-bottom: 2px solid #D4A574;
         }
         
+        /* Popover button styling - golden theme */
+        [data-testid="stPopover"] > button {
+            background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%) !important;
+            border: 2px solid #D4A574 !important;
+            border-radius: 10px !important;
+            color: #5D4E37 !important;
+            font-weight: 500 !important;
+            padding: 0.5rem 1rem !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        [data-testid="stPopover"] > button:hover {
+            background: linear-gradient(135deg, #F5EBD7 0%, #E8DCC8 100%) !important;
+            border-color: #B8860B !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(139, 105, 20, 0.2) !important;
+        }
+        
+        [data-testid="stPopover"] > button span {
+            color: #5D4E37 !important;
+        }
+        
+        /* Popover body styling */
         [data-testid="stPopoverBody"] {
             background: #FFFDF8 !important;
             border: 2px solid #D4A574 !important;
             border-radius: 12px !important;
+            padding: 0 !important;
+        }
+        
+        [data-testid="stPopoverBody"] > div {
+            background: #FFFDF8 !important;
+            padding: 1rem !important;
+        }
+        
+        [data-testid="stPopoverBody"] p, 
+        [data-testid="stPopoverBody"] span,
+        [data-testid="stPopoverBody"] div {
+            color: #3D3A36 !important;
+        }
+        
+        [data-testid="stPopoverBody"] strong {
+            color: #8B6914 !important;
+        }
+        
+        [data-testid="stPopoverBody"] hr {
+            border-color: #D4A574 !important;
+            margin: 0.5rem 0 !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -345,6 +396,44 @@ def get_rag_chain(_vs_manager: VectorStoreManager, module_id: str) -> RAGChainBu
 # Source Display Helper
 # =============================================================================
 
+def _format_source_content(content: str) -> str:
+    """
+    Clean and format source content for better readability.
+    
+    Args:
+        content: Raw content from the document
+        
+    Returns:
+        Formatted HTML-safe content
+    """
+    import re
+    import html
+    
+    # Escape HTML characters first
+    content = html.escape(content)
+    
+    # Remove inline page numbers that got mixed in (like 633, 634 at line endings)
+    content = re.sub(r'(\d{3,4})\s*(?=\n|$|[A-Z])', r' ', content)
+    
+    # Add line breaks for article headers
+    content = re.sub(r'(Article\s+\d+[^:]*:?)', r'<br><br><strong>\1</strong><br>', content)
+    
+    # Add line breaks for list items (like A.-, B.-, 1°, 2°, etc.)
+    content = re.sub(r'([A-Z]\.-)', r'<br><strong>\1</strong>', content)
+    content = re.sub(r'(\d+°)', r'<br>  • \1', content)
+    
+    # Add breaks for "Le taux", "Les opérations", etc.
+    content = re.sub(r'(Le taux|Les opérations|La taxe)', r'<br>\1', content)
+    
+    # Clean up multiple spaces
+    content = re.sub(r'\s{2,}', ' ', content)
+    
+    # Clean up multiple line breaks
+    content = re.sub(r'(<br>\s*){3,}', '<br><br>', content)
+    
+    return content.strip()
+
+
 def render_clickable_sources(sources: List[Dict[str, Any]], key_prefix: str = ""):
     """
     Render clickable source buttons with popovers showing the content.
@@ -378,11 +467,16 @@ def render_clickable_sources(sources: List[Dict[str, Any]], key_prefix: str = ""
             page_num = source.get("page", "N/A")
             content = source.get("content", "Contenu non disponible")
             
+            # Clean up the content for better readability
+            clean_content = _format_source_content(content)
+            
             with st.popover(f"📖 Page {page_num}", use_container_width=True):
-                st.markdown(f"**Extrait de la Page {page_num}**")
-                st.markdown("---")
                 st.markdown(
-                    f'<div class="source-content">{content}</div>',
+                    f'<div class="source-header">📄 Extrait - Page {page_num}</div>',
+                    unsafe_allow_html=True
+                )
+                st.markdown(
+                    f'<div class="source-content">{clean_content}</div>',
                     unsafe_allow_html=True
                 )
 
