@@ -225,12 +225,13 @@ Ta réponse chaleureuse :"""
         return chain.invoke(question)
     
     def stream(self, question: str):
-        """Stream the response for the appropriate chain based on question type."""
+        """Stream the response for the appropriate chain based on question type. v2"""
         if is_conversational_query(question):
             chain = self.get_conversational_chain()
         else:
             chain = self.get_chain()
         
+        # Stream chunks from the chain
         for chunk in chain.stream(question):
             yield chunk
     
