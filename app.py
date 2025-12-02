@@ -425,7 +425,7 @@ def render_chat_page(module_id: str):
     
     # Initialize RAG chain
     rag_chain = get_rag_chain(vs_manager, module_id)
-    query_handler = RAGQueryHandler(rag_chain)
+    query_handler = RAGQueryHandler(rag_chain, module_id)
     
     st.markdown("---")
     
