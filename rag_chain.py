@@ -173,7 +173,7 @@ Ta réponse chaleureuse :"""
     
     def build_chain(self):
         """Build the complete RAG chain."""
-        retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 8})
+        retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 6})
         prompt = self._create_prompt_template()
         llm = self._get_llm()
         
@@ -223,6 +223,16 @@ Ta réponse chaleureuse :"""
             chain = self.get_chain()
         
         return chain.invoke(question)
+    
+    def stream(self, question: str):
+        """Stream the response for the appropriate chain based on question type."""
+        if is_conversational_query(question):
+            chain = self.get_conversational_chain()
+        else:
+            chain = self.get_chain()
+        
+        for chunk in chain.stream(question):
+            yield chunk
     
     def get_relevant_documents(self, question: str, k: int = 8) -> List[Document]:
         """Get relevant documents for a question."""
@@ -336,6 +346,48 @@ Nouvelle question de l'utilisateur: {question}"""
                 "error": str(e),
                 "is_conversational": False
             }
+    
+    def stream(self, question: str, conversation_history: List[Dict[str, str]] = None):
+        """
+        Stream a response for the question.
+        
+        Returns a generator that yields chunks of the response, plus metadata at the end.
+        """
+        original_question = question
+        is_conversational = is_conversational_query(question)
+        
+        # Check if question is off-topic for this module
+        if not is_conversational and is_off_topic(question, self.module_id):
+            yield OFF_TOPIC_MESSAGES.get(self.module_id, "Cette question est hors-sujet.")
+            return
+        
+        # For technical questions, append instruction for detailed response
+        if not is_conversational:
+            question = f"{question}\n\n[INSTRUCTION: Réponds de manière EXHAUSTIVE et STRUCTURÉE avec des sections numérotées. NE DIS PAS Bonjour. NE DIS PAS 'N'hésitez pas'. Va DIRECTEMENT au contenu.]"
+        
+        # Build question with conversation context
+        if conversation_history and len(conversation_history) > 1:
+            history_text = self._format_conversation_history(conversation_history)
+            if history_text:
+                question_with_context = f"""Historique de la conversation récente:
+{history_text}
+
+Nouvelle question de l'utilisateur: {question}"""
+            else:
+                question_with_context = question
+        else:
+            question_with_context = question
+        
+        # Stream the response
+        for chunk in self.rag_chain.stream(question_with_context):
+            yield chunk
+    
+    def get_sources(self, question: str) -> List:
+        """Get source pages for a question."""
+        if is_conversational_query(question):
+            return []
+        sources = self.rag_chain.get_relevant_documents(question)
+        return list(set(doc.metadata.get("page", "N/A") for doc in sources))
 
 
 def create_rag_chain(

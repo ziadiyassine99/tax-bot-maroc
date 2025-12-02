@@ -442,26 +442,22 @@ def render_chat_page(module_id: str):
         with st.chat_message("user"):
             st.markdown(prompt)
         
-        # Generate response with conversation context
+        # Generate response with conversation context (streaming)
         with st.chat_message("assistant"):
-            with st.spinner("Réflexion en cours..."):
-                # Pass last 5 exchanges as context
-                conversation_history = st.session_state.messages.get(module_id, [])
-                result = query_handler.ask(prompt, conversation_history=conversation_history)
-                
-                if result["success"]:
-                    response = result["answer"]
-                    
-                    # Add sources for non-conversational queries
-                    if not result.get("is_conversational", False) and result["sources"]:
-                        pages = [str(p) for p in result["sources"] if p != "N/A"]
-                        if pages:
-                            sorted_pages = sorted(set(pages), key=lambda x: int(x) if x.isdigit() else 0)
-                            response += f"\n\n📄 _Sources: Pages {', '.join(sorted_pages)}_"
-                else:
-                    response = f"⚠️ Erreur: {result['error']}\n\nVeuillez réessayer."
-                
-                st.markdown(response)
+            conversation_history = st.session_state.messages.get(module_id, [])
+            
+            # Stream the response
+            response = st.write_stream(query_handler.stream(prompt, conversation_history=conversation_history))
+            
+            # Add sources after streaming completes
+            sources = query_handler.get_sources(prompt)
+            if sources:
+                pages = [str(p) for p in sources if p != "N/A"]
+                if pages:
+                    sorted_pages = sorted(set(pages), key=lambda x: int(x) if x.isdigit() else 0)
+                    sources_text = f"\n\n📄 _Sources: Pages {', '.join(sorted_pages)}_"
+                    st.markdown(sources_text)
+                    response += sources_text
         
         # Add assistant message
         st.session_state.messages[module_id].append({"role": "assistant", "content": response})
