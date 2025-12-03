@@ -126,7 +126,7 @@ Ta réponse chaleureuse :"""
     
     def build_chain(self):
         """Build the complete RAG chain."""
-        retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 6})
+        retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 8})
         prompt = self._create_prompt_template()
         llm = self._get_llm()
         
