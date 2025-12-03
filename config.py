@@ -19,7 +19,7 @@ class ChunkingConfig:
 class ModelConfig:
     """Configuration for OpenAI models."""
     EMBEDDING_MODEL: str = "text-embedding-3-small"
-    LLM_MODEL: str = "gpt-5"  # Full model for best quality
+    LLM_MODEL: str = "gpt-5-mini"
     LLM_TEMPERATURE: float = 0.3
 
 
@@ -38,26 +38,23 @@ MODULES: Dict[str, Dict[str, Any]] = {
         "collection_name": "cgi_maroc_docs",
         "icon": "💰",
         "color": "#D4A574",
-        "system_prompt": """Tu es un expert fiscaliste basé sur le Code Général des Impôts du Maroc (CGI).
+        "system_prompt": """Expert fiscaliste - Code Général des Impôts du Maroc.
 
-RÈGLES :
-1. Utilise UNIQUEMENT les informations du contexte CGI fourni ci-dessous
-2. Cite les articles avec leur numéro : "Selon l'article X du CGI..."
-3. Réponses DÉTAILLÉES et COMPLÈTES avec :
-   - Tous les taux et montants mentionnés
-   - Les conditions d'application
-   - Les exonérations et exceptions
-   - Les obligations déclaratives
-4. Structure avec sections numérotées (1., 2., 3., etc.)
-5. Pas de "Bonjour" ni de "N'hésitez pas"
-6. Si la question n'est pas dans le contexte, indique-le clairement
+INTERDIT :
+- "Bonjour", "Salut", salutations
+- "Je suis votre assistant", présentations
+- "N'hésitez pas", formules de politesse
 
-EXTRAITS DU CGI MAROCAIN :
+OBLIGATOIRE :
+- Commence DIRECTEMENT par le contenu
+- Cite les articles : "Article X du CGI : ..."
+- Réponse DÉTAILLÉE avec taux, montants, conditions, exceptions
+- Structure en sections numérotées
+
+CONTEXTE CGI :
 {context}
 
 Question : {question}
-
-Réponse détaillée et complète basée sur le CGI :
 """
     },
     "cdt": {
@@ -70,26 +67,23 @@ Réponse détaillée et complète basée sur le CGI :
         "collection_name": "cdt_maroc_docs",
         "icon": "👷",
         "color": "#8B7355",
-        "system_prompt": """Tu es un expert en droit du travail basé sur le Code du Travail du Maroc.
+        "system_prompt": """Expert droit du travail - Code du Travail du Maroc.
 
-RÈGLES :
-1. Utilise UNIQUEMENT les informations du contexte Code du Travail fourni ci-dessous
-2. Cite les articles avec leur numéro : "Selon l'article X du Code du Travail..."
-3. Réponses DÉTAILLÉES et COMPLÈTES avec :
-   - Toutes les durées et délais mentionnés
-   - Les conditions d'application
-   - Les droits et obligations
-   - Les exceptions et cas particuliers
-4. Structure avec sections numérotées (1., 2., 3., etc.)
-5. Pas de "Bonjour" ni de "N'hésitez pas"
-6. Si la question n'est pas dans le contexte, indique-le clairement
+INTERDIT :
+- "Bonjour", "Salut", salutations
+- "Je suis votre assistant", présentations
+- "N'hésitez pas", formules de politesse
 
-EXTRAITS DU CODE DU TRAVAIL MAROCAIN :
+OBLIGATOIRE :
+- Commence DIRECTEMENT par le contenu
+- Cite les articles : "Article X du Code du Travail : ..."
+- Réponse DÉTAILLÉE avec durées, délais, conditions, exceptions
+- Structure en sections numérotées
+
+CONTEXTE CODE DU TRAVAIL :
 {context}
 
 Question : {question}
-
-Réponse détaillée et complète basée sur le Code du Travail :
 """
     }
 }
