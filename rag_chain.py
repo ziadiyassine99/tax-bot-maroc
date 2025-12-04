@@ -4,17 +4,96 @@ Handles the retrieval-augmented generation pipeline for any module.
 """
 
 import re
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 
 from config import ModelConfig, get_openai_api_key
 from vector_store import VectorStoreManager
 
+
+# =============================================================================
+# Query Rewriter - Améliore les requêtes utilisateur pour une meilleure recherche
+# =============================================================================
+
+class QueryRewriter:
+    """
+    Reformule les questions utilisateur pour améliorer la recherche RAG.
+    
+    Transforme des requêtes mal formulées en requêtes précises:
+    - "c koi le smig" → "Quel est le salaire minimum interprofessionnel garanti (SMIG)?"
+    - "cdd max" → "Quelle est la durée maximale d'un contrat à durée déterminée (CDD)?"
+    """
+    
+    REWRITE_PROMPT = """Tu es un expert en reformulation de requêtes pour un système de recherche juridique sur le {module_name} marocain.
+
+Reformule la question pour optimiser la recherche dans les documents juridiques:
+- Corrige l'orthographe et la grammaire
+- Développe les abréviations (SMIG → salaire minimum interprofessionnel garanti, CDD → contrat à durée déterminée, TVA → taxe sur la valeur ajoutée, IS → impôt sur les sociétés, IR → impôt sur le revenu)
+- Ajoute des termes juridiques pertinents
+- Garde le sens original de la question
+- Rends la question claire et précise
+
+Question originale: {question}
+
+Question reformulée (une seule phrase, sans explication):"""
+
+    def __init__(self, module_name: str):
+        """Initialize the query rewriter for a specific module."""
+        self.module_name = module_name
+        self._llm = None
+        self._chain = None
+    
+    def _get_llm(self) -> ChatOpenAI:
+        """Get a fast LLM for query rewriting."""
+        if self._llm is None:
+            api_key = get_openai_api_key()
+            self._llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0,
+                openai_api_key=api_key,
+                max_tokens=150  # Keep it short
+            )
+        return self._llm
+    
+    def _get_chain(self):
+        """Build the rewriting chain."""
+        if self._chain is None:
+            prompt = ChatPromptTemplate.from_template(self.REWRITE_PROMPT)
+            self._chain = prompt | self._get_llm() | StrOutputParser()
+        return self._chain
+    
+    def rewrite(self, question: str) -> str:
+        """
+        Rewrite a user question for better retrieval.
+        
+        Args:
+            question: Original user question (possibly poorly formatted)
+            
+        Returns:
+            Reformulated question optimized for search
+        """
+        try:
+            chain = self._get_chain()
+            rewritten = chain.invoke({
+                "question": question,
+                "module_name": self.module_name
+            })
+            # Clean up the result
+            rewritten = rewritten.strip().strip('"').strip("'")
+            return rewritten if rewritten else question
+        except Exception:
+            # Fallback to original question if rewriting fails
+            return question
+
+
+# =============================================================================
+# Conversational Query Detection
+# =============================================================================
 
 # Patterns for conversational queries (non-legal)
 CONVERSATIONAL_PATTERNS = [
@@ -54,6 +133,7 @@ def is_conversational_query(question: str) -> bool:
 class RAGChainBuilder:
     """
     Builds and manages the RAG chain for any legal module.
+    Includes query rewriting for improved retrieval.
     """
     
     def __init__(
@@ -82,6 +162,8 @@ class RAGChainBuilder:
         self._llm = None
         self._chain = None
         self._conversational_chain = None
+        # Query rewriter for better retrieval
+        self._query_rewriter = QueryRewriter(module_name)
     
     def _get_llm(self) -> ChatOpenAI:
         """Get or create the LLM instance."""
@@ -124,16 +206,20 @@ Ta réponse chaleureuse :"""
         
         return "\n\n---\n\n".join(formatted_parts)
     
+    def rewrite_query(self, question: str) -> str:
+        """Rewrite a query for better retrieval."""
+        return self._query_rewriter.rewrite(question)
+    
     def build_chain(self):
-        """Build the complete RAG chain."""
-        # Retrieve more documents (15) for better coverage of complex topics
+        """Build the complete RAG chain with query rewriting."""
         retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 15})
         prompt = self._create_prompt_template()
         llm = self._get_llm()
         
+        # Chain that rewrites query, retrieves docs, and generates response
         self._chain = (
             {
-                "context": retriever | self._format_documents,
+                "context": RunnableLambda(self.rewrite_query) | retriever | self._format_documents,
                 "question": RunnablePassthrough()
             }
             | prompt
@@ -190,8 +276,9 @@ Ta réponse chaleureuse :"""
             yield chunk
     
     def get_relevant_documents(self, question: str, k: int = 8) -> List[Document]:
-        """Get relevant documents for a question."""
-        return self.vector_store_manager.similarity_search(question, k=k)
+        """Get relevant documents for a question (uses rewritten query)."""
+        rewritten = self.rewrite_query(question)
+        return self.vector_store_manager.similarity_search(rewritten, k=k)
 
 
 class RAGQueryHandler:
