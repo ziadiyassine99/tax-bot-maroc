@@ -1,6 +1,7 @@
 """
 Vector store module for Qdrant management.
 Handles embedding storage and retrieval for any module.
+Supports both Docker-based Qdrant and in-memory mode for cloud deployment.
 """
 
 from typing import List, Optional, Dict, Any
@@ -20,10 +21,21 @@ QDRANT_PORT = 6333
 EMBEDDING_DIMENSION = 1536  # text-embedding-3-small dimension
 
 
+def _is_qdrant_server_available(host: str = QDRANT_HOST, port: int = QDRANT_PORT) -> bool:
+    """Check if Qdrant server is reachable."""
+    try:
+        client = QdrantClient(host=host, port=port, timeout=2)
+        client.get_collections()
+        return True
+    except Exception:
+        return False
+
+
 class VectorStoreManager:
     """
     Manages the Qdrant vector store for document embeddings.
     Supports multiple modules with separate collections.
+    Falls back to in-memory mode when Docker Qdrant is unavailable.
     """
     
     def __init__(
@@ -49,14 +61,20 @@ class VectorStoreManager:
         self._embeddings: Optional[OpenAIEmbeddings] = None
         self._vector_store: Optional[QdrantVectorStore] = None
         self._client: Optional[QdrantClient] = None
+        self._use_memory_mode: bool = not _is_qdrant_server_available(qdrant_host, qdrant_port)
     
     def _get_client(self) -> QdrantClient:
         """Get or create the Qdrant client."""
         if self._client is None:
-            self._client = QdrantClient(
-                host=self.qdrant_host,
-                port=self.qdrant_port
-            )
+            if self._use_memory_mode:
+                # In-memory client for cloud deployment
+                self._client = QdrantClient(":memory:")
+            else:
+                # Docker-based client for local development
+                self._client = QdrantClient(
+                    host=self.qdrant_host,
+                    port=self.qdrant_port
+                )
         return self._client
     
     def _get_embeddings(self) -> OpenAIEmbeddings:
@@ -68,6 +86,10 @@ class VectorStoreManager:
                 openai_api_key=api_key
             )
         return self._embeddings
+    
+    def is_memory_mode(self) -> bool:
+        """Check if running in memory mode."""
+        return self._use_memory_mode
     
     def vector_store_exists(self) -> bool:
         """Check if the collection already exists in Qdrant."""
@@ -99,13 +121,22 @@ class VectorStoreManager:
         if self.vector_store_exists():
             client.delete_collection(self.collection_name)
         
-        # Create vector store with documents
-        self._vector_store = QdrantVectorStore.from_documents(
-            documents=documents,
-            embedding=embeddings,
-            url=f"http://{self.qdrant_host}:{self.qdrant_port}",
-            collection_name=self.collection_name
-        )
+        if self._use_memory_mode:
+            # In-memory mode: use client directly
+            self._vector_store = QdrantVectorStore.from_documents(
+                documents=documents,
+                embedding=embeddings,
+                collection_name=self.collection_name,
+                location=":memory:"
+            )
+        else:
+            # Docker mode: connect via URL
+            self._vector_store = QdrantVectorStore.from_documents(
+                documents=documents,
+                embedding=embeddings,
+                url=f"http://{self.qdrant_host}:{self.qdrant_port}",
+                collection_name=self.collection_name
+            )
         
         return self._vector_store
     
@@ -113,11 +144,15 @@ class VectorStoreManager:
         """Load an existing vector store from Qdrant."""
         embeddings = self._get_embeddings()
         
-        self._vector_store = QdrantVectorStore.from_existing_collection(
-            embedding=embeddings,
-            url=f"http://{self.qdrant_host}:{self.qdrant_port}",
-            collection_name=self.collection_name
-        )
+        if self._use_memory_mode:
+            # In-memory mode: can't load existing, will recreate
+            raise ValueError("Cannot load existing store in memory mode")
+        else:
+            self._vector_store = QdrantVectorStore.from_existing_collection(
+                embedding=embeddings,
+                url=f"http://{self.qdrant_host}:{self.qdrant_port}",
+                collection_name=self.collection_name
+            )
         
         return self._vector_store
     
@@ -129,6 +164,15 @@ class VectorStoreManager:
         if self._vector_store is not None:
             return self._vector_store
         
+        # In memory mode, always need to create fresh
+        if self._use_memory_mode:
+            if documents is None:
+                raise ValueError(
+                    "Mode mémoire: documents requis pour créer la base vectorielle."
+                )
+            return self.create_vector_store(documents)
+        
+        # Docker mode: can load existing
         if self.vector_store_exists():
             return self.load_vector_store()
         
@@ -165,7 +209,8 @@ class VectorStoreManager:
                 "name": self.collection_name,
                 "vectors_count": info.vectors_count,
                 "points_count": info.points_count,
-                "status": info.status
+                "status": info.status,
+                "mode": "memory" if self._use_memory_mode else "docker"
             }
         except Exception as e:
             return {"error": str(e)}

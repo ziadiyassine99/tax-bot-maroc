@@ -272,7 +272,13 @@ def load_module_resources(module_id: str) -> Tuple[bool, Optional[str], int, Opt
         # Create vector store manager
         vs_manager = create_vector_store_manager(module_config)
         
-        # Check if vector store exists
+        # In memory mode (cloud): always load and create fresh
+        if vs_manager.is_memory_mode():
+            documents = doc_processor.load_and_split()
+            vs_manager.create_vector_store(documents)
+            return True, None, len(documents), vs_manager
+        
+        # Docker mode: check if vector store exists
         if vs_manager.vector_store_exists():
             vs_manager.load_vector_store()
             return True, None, -1, vs_manager
