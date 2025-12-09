@@ -20,7 +20,7 @@ class ModelConfig:
     """Configuration for OpenAI models."""
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     LLM_MODEL: str = "gpt-4o-mini"
-    LLM_TEMPERATURE: float = 0.2
+    LLM_TEMPERATURE: float = 0.3
 
 
 # =============================================================================
