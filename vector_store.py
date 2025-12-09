@@ -1,43 +1,63 @@
 """
-Vector store module for ChromaDB management.
+Vector store module for Qdrant management.
 Handles embedding storage and retrieval for any module.
 """
 
-import os
 from typing import List, Optional, Dict, Any
 
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
 
 from config import ModelConfig, get_openai_api_key
 
 
+# Qdrant connection settings
+QDRANT_HOST = "localhost"
+QDRANT_PORT = 6333
+EMBEDDING_DIMENSION = 1536  # text-embedding-3-small dimension
+
+
 class VectorStoreManager:
     """
-    Manages the ChromaDB vector store for document embeddings.
+    Manages the Qdrant vector store for document embeddings.
     Supports multiple modules with separate collections.
     """
     
     def __init__(
         self,
-        persist_directory: str,
         collection_name: str,
-        embedding_model: str = ModelConfig.EMBEDDING_MODEL
+        embedding_model: str = ModelConfig.EMBEDDING_MODEL,
+        qdrant_host: str = QDRANT_HOST,
+        qdrant_port: int = QDRANT_PORT
     ):
         """
         Initialize the vector store manager.
         
         Args:
-            persist_directory: Directory for ChromaDB persistence
-            collection_name: Name of the ChromaDB collection
+            collection_name: Name of the Qdrant collection
             embedding_model: OpenAI embedding model to use
+            qdrant_host: Qdrant server host
+            qdrant_port: Qdrant server port
         """
-        self.persist_directory = persist_directory
         self.collection_name = collection_name
         self.embedding_model = embedding_model
+        self.qdrant_host = qdrant_host
+        self.qdrant_port = qdrant_port
         self._embeddings: Optional[OpenAIEmbeddings] = None
-        self._vector_store: Optional[Chroma] = None
+        self._vector_store: Optional[QdrantVectorStore] = None
+        self._client: Optional[QdrantClient] = None
+    
+    def _get_client(self) -> QdrantClient:
+        """Get or create the Qdrant client."""
+        if self._client is None:
+            self._client = QdrantClient(
+                host=self.qdrant_host,
+                port=self.qdrant_port
+            )
+        return self._client
     
     def _get_embeddings(self) -> OpenAIEmbeddings:
         """Get or create the embeddings instance."""
@@ -50,30 +70,52 @@ class VectorStoreManager:
         return self._embeddings
     
     def vector_store_exists(self) -> bool:
-        """Check if a persisted vector store already exists."""
-        chroma_path = os.path.join(self.persist_directory, "chroma.sqlite3")
-        return os.path.exists(chroma_path)
+        """Check if the collection already exists in Qdrant."""
+        try:
+            client = self._get_client()
+            collections = client.get_collections().collections
+            return any(c.name == self.collection_name for c in collections)
+        except Exception:
+            return False
     
-    def create_vector_store(self, documents: List[Document]) -> Chroma:
+    def _ensure_collection_exists(self) -> None:
+        """Create the collection if it doesn't exist."""
+        client = self._get_client()
+        if not self.vector_store_exists():
+            client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=EMBEDDING_DIMENSION,
+                    distance=Distance.COSINE
+                )
+            )
+    
+    def create_vector_store(self, documents: List[Document]) -> QdrantVectorStore:
         """Create a new vector store from documents."""
         embeddings = self._get_embeddings()
+        client = self._get_client()
         
-        self._vector_store = Chroma.from_documents(
+        # Delete existing collection if it exists (for fresh rebuild)
+        if self.vector_store_exists():
+            client.delete_collection(self.collection_name)
+        
+        # Create vector store with documents
+        self._vector_store = QdrantVectorStore.from_documents(
             documents=documents,
             embedding=embeddings,
-            persist_directory=self.persist_directory,
+            url=f"http://{self.qdrant_host}:{self.qdrant_port}",
             collection_name=self.collection_name
         )
         
         return self._vector_store
     
-    def load_vector_store(self) -> Chroma:
-        """Load an existing vector store from disk."""
+    def load_vector_store(self) -> QdrantVectorStore:
+        """Load an existing vector store from Qdrant."""
         embeddings = self._get_embeddings()
         
-        self._vector_store = Chroma(
-            persist_directory=self.persist_directory,
-            embedding_function=embeddings,
+        self._vector_store = QdrantVectorStore.from_existing_collection(
+            embedding=embeddings,
+            url=f"http://{self.qdrant_host}:{self.qdrant_port}",
             collection_name=self.collection_name
         )
         
@@ -82,7 +124,7 @@ class VectorStoreManager:
     def get_or_create_vector_store(
         self,
         documents: Optional[List[Document]] = None
-    ) -> Chroma:
+    ) -> QdrantVectorStore:
         """Get existing vector store or create a new one."""
         if self._vector_store is not None:
             return self._vector_store
@@ -113,6 +155,20 @@ class VectorStoreManager:
             raise ValueError("Vector store not initialized.")
         
         return self._vector_store.similarity_search(query, k=k)
+    
+    def get_collection_info(self) -> Dict[str, Any]:
+        """Get information about the collection."""
+        try:
+            client = self._get_client()
+            info = client.get_collection(self.collection_name)
+            return {
+                "name": self.collection_name,
+                "vectors_count": info.vectors_count,
+                "points_count": info.points_count,
+                "status": info.status
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
 
 def create_vector_store_manager(module_config: Dict[str, Any]) -> VectorStoreManager:
@@ -126,6 +182,5 @@ def create_vector_store_manager(module_config: Dict[str, Any]) -> VectorStoreMan
         VectorStoreManager: Configured vector store manager instance
     """
     return VectorStoreManager(
-        persist_directory=module_config["persist_directory"],
         collection_name=module_config["collection_name"]
     )

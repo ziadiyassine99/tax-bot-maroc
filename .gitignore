@@ -4,9 +4,7 @@
 *.env
 
 # Bases vectorielles (seront recréées au déploiement)
-chroma_db/
-chroma_db_cgi/
-chroma_db_cdt/
+qdrant_data/
 
 # Python cache
 __pycache__/
