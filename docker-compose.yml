@@ -10,3 +10,4 @@ services:
       - ./qdrant_data:/qdrant/storage
     restart: unless-stopped
 
+
