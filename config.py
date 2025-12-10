@@ -72,8 +72,10 @@ INSTRUCTIONS :
 3. Cite les articles avec leur numéro : "Article X : [texte du contexte]"
 4. Sois COMPLET : cite TOUS les éléments des listes (si 6 points, cite les 6)
 5. Si le contexte contient des infos pertinentes, utilise-les même si pas exactement la question posée
-6. Dis "Le contexte ne contient pas cette information spécifique" SEULEMENT si vraiment rien de pertinent
-7. Pas de salutations, commence directement par la réponse
+6. IMPORTANT: Si la question demande un montant/valeur/chiffre (SMIG, SMAG, salaire minimum, etc.), EXTRAIS et CITE les valeurs numériques exactes du contexte (ex: "17.10 dirhams", "93 dirhams par jour", etc.)
+7. Si le contexte contient des décrets ou arrêtés avec des montants, cite-les TOUJOURS avec précision
+8. Dis "Le contexte ne contient pas cette information spécifique" SEULEMENT si vraiment rien de pertinent
+9. Pas de salutations, commence directement par la réponse
 
 CONTEXTE DU CODE DU TRAVAIL :
 {context}

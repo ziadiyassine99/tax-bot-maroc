@@ -6,6 +6,9 @@
 # Bases vectorielles (seront recréées au déploiement)
 qdrant_data/
 
+# Document tracker (local state)
+.document_tracker.json
+
 # Python cache
 __pycache__/
 *.py[cod]

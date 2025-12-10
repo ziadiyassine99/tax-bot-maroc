@@ -298,7 +298,7 @@ def load_module_resources(module_id: str) -> Tuple[bool, Optional[str], int, Opt
 
 
 # Version bump to invalidate cache when prompts change (NO underscore = included in cache key)
-RAG_CHAIN_VERSION = "v6_query_rewriter"
+RAG_CHAIN_VERSION = "v7_multilingual_enhanced"
 
 @st.cache_resource(show_spinner=False)
 def get_rag_chain(_vs_manager: VectorStoreManager, module_id: str, version: str = RAG_CHAIN_VERSION) -> RAGChainBuilder:

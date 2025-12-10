@@ -2,15 +2,20 @@
 Vector store module for Qdrant management.
 Handles embedding storage and retrieval for any module.
 Supports both Docker-based Qdrant and in-memory mode for cloud deployment.
+Includes incremental indexing for efficient updates.
 """
 
+import uuid
+import hashlib
 from typing import List, Optional, Dict, Any
 
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
+from qdrant_client.http.models import (
+    Distance, VectorParams, Filter, FieldCondition, MatchValue
+)
 
 from config import ModelConfig, get_openai_api_key
 
@@ -31,11 +36,19 @@ def _is_qdrant_server_available(host: str = QDRANT_HOST, port: int = QDRANT_PORT
         return False
 
 
+def _generate_chunk_id(source: str, chunk_index: int) -> str:
+    """Generate a stable UUID for a chunk based on source and index."""
+    unique_string = f"{source}_{chunk_index}"
+    hash_bytes = hashlib.md5(unique_string.encode()).digest()
+    return str(uuid.UUID(bytes=hash_bytes[:16]))
+
+
 class VectorStoreManager:
     """
     Manages the Qdrant vector store for document embeddings.
     Supports multiple modules with separate collections.
     Falls back to in-memory mode when Docker Qdrant is unavailable.
+    Supports incremental indexing for efficient updates.
     """
     
     def __init__(
@@ -113,13 +126,18 @@ class VectorStoreManager:
             )
     
     def create_vector_store(self, documents: List[Document]) -> QdrantVectorStore:
-        """Create a new vector store from documents."""
+        """Create a new vector store from documents (full rebuild)."""
         embeddings = self._get_embeddings()
         client = self._get_client()
         
         # Delete existing collection if it exists (for fresh rebuild)
         if self.vector_store_exists():
             client.delete_collection(self.collection_name)
+        
+        # Add source tracking to metadata
+        for doc in documents:
+            if 'source' not in doc.metadata:
+                doc.metadata['source'] = 'unknown'
         
         if self._use_memory_mode:
             # In-memory mode: use client directly
@@ -182,6 +200,140 @@ class VectorStoreManager:
             )
         
         return self.create_vector_store(documents)
+    
+    # =========================================================================
+    # Incremental Indexing Methods
+    # =========================================================================
+    
+    def delete_documents_by_source(self, source_path: str) -> int:
+        """
+        Delete all documents from a specific source file.
+        
+        Args:
+            source_path: Path to the source file
+            
+        Returns:
+            Number of points deleted
+        """
+        if self._use_memory_mode:
+            # Memory mode doesn't support incremental updates well
+            return 0
+        
+        client = self._get_client()
+        
+        if not self.vector_store_exists():
+            return 0
+        
+        # Delete points where metadata.source matches
+        result = client.delete(
+            collection_name=self.collection_name,
+            points_selector=Filter(
+                must=[
+                    FieldCondition(
+                        key="metadata.source",
+                        match=MatchValue(value=source_path)
+                    )
+                ]
+            )
+        )
+        
+        return 1 if result else 0
+    
+    def add_documents(self, documents: List[Document]) -> int:
+        """
+        Add new documents to the existing vector store.
+        
+        Args:
+            documents: List of documents to add
+            
+        Returns:
+            Number of documents added
+        """
+        if not documents:
+            return 0
+        
+        embeddings = self._get_embeddings()
+        
+        # Ensure source metadata is set
+        for doc in documents:
+            if 'source' not in doc.metadata:
+                doc.metadata['source'] = 'unknown'
+        
+        if self._use_memory_mode:
+            # In memory mode, can't add incrementally
+            # Would need to rebuild entire store
+            return 0
+        
+        # Ensure collection exists
+        self._ensure_collection_exists()
+        
+        # If we have an existing vector store, add to it
+        if self._vector_store is not None:
+            self._vector_store.add_documents(documents)
+        else:
+            # Create new vector store with documents
+            url = f"http://{self.qdrant_host}:{self.qdrant_port}"
+            QdrantVectorStore.from_documents(
+                documents=documents,
+                embedding=embeddings,
+                url=url,
+                collection_name=self.collection_name
+            )
+            # Load it
+            self.load_vector_store()
+        
+        return len(documents)
+    
+    def sync_documents(
+        self,
+        added_docs: List[Document],
+        modified_sources: List[str],
+        modified_docs: List[Document],
+        deleted_sources: List[str]
+    ) -> Dict[str, int]:
+        """
+        Synchronize vector store with document changes.
+        
+        Args:
+            added_docs: New documents to add
+            modified_sources: Source paths of modified files (to delete old chunks)
+            modified_docs: New chunks from modified files
+            deleted_sources: Source paths of deleted files
+            
+        Returns:
+            Dict with counts of operations performed
+        """
+        stats = {"added": 0, "updated": 0, "deleted": 0}
+        
+        if self._use_memory_mode:
+            # Memory mode: full rebuild required
+            all_docs = added_docs + modified_docs
+            if all_docs:
+                self.create_vector_store(all_docs)
+                stats["added"] = len(all_docs)
+            return stats
+        
+        # Delete documents from deleted files
+        for source in deleted_sources:
+            self.delete_documents_by_source(source)
+            stats["deleted"] += 1
+        
+        # Delete old chunks from modified files, then add new ones
+        for source in modified_sources:
+            self.delete_documents_by_source(source)
+            stats["updated"] += 1
+        
+        # Add new documents (from both new and modified files)
+        all_new_docs = added_docs + modified_docs
+        if all_new_docs:
+            self.add_documents(all_new_docs)
+            stats["added"] = len(added_docs)
+        
+        return stats
+    
+    # =========================================================================
+    # Query Methods
+    # =========================================================================
     
     def get_retriever(self, search_kwargs: Optional[dict] = None):
         """Get a retriever from the vector store."""

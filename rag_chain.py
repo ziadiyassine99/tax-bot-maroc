@@ -31,10 +31,14 @@ class QueryRewriter:
     
     REWRITE_PROMPT = """Tu es un expert en reformulation de requêtes pour un système de recherche juridique sur le {module_name} marocain.
 
+Les documents peuvent être en français, arabe ou mixte. Optimise la recherche multilingue.
+
 Reformule la question pour optimiser la recherche dans les documents juridiques:
 - Corrige l'orthographe et la grammaire
-- Développe les abréviations (SMIG → salaire minimum interprofessionnel garanti, CDD → contrat à durée déterminée, TVA → taxe sur la valeur ajoutée, IS → impôt sur les sociétés, IR → impôt sur le revenu)
-- Ajoute des termes juridiques pertinents
+- Développe les abréviations (SMIG → salaire minimum interprofessionnel garanti, SMAG → salaire minimum agricole garanti, CDD → contrat à durée déterminée, TVA → taxe sur la valeur ajoutée, IS → impôt sur les sociétés, IR → impôt sur le revenu)
+- Pour SMIG/SMAG: ajoute aussi "salaire minimum", "montant", "dirham", "dh", "valeur", "montant légal"
+- Ajoute des termes juridiques pertinents en français ET leurs équivalents conceptuels
+- Si la question cherche un montant/valeur/chiffre: ajoute des mots-clés comme "montant", "valeur", "chiffre", "dirham", "dh"
 - Garde le sens original de la question
 - Rends la question claire et précise
 
@@ -210,16 +214,40 @@ Ta réponse chaleureuse :"""
         """Rewrite a query for better retrieval."""
         return self._query_rewriter.rewrite(question)
     
+    def _enhanced_retrieval(self, question: str) -> List[Document]:
+        """
+        Enhanced retrieval with multiple query strategies for better multilingual results.
+        """
+        rewritten = self.rewrite_query(question)
+        
+        # Primary search with rewritten query
+        docs1 = self.vector_store_manager.similarity_search(rewritten, k=20)
+        
+        # Secondary search with original question (in case rewrite loses important terms)
+        docs2 = self.vector_store_manager.similarity_search(question, k=10)
+        
+        # Combine and deduplicate by content
+        seen_content = set()
+        combined_docs = []
+        
+        for doc in docs1 + docs2:
+            content_hash = hash(doc.page_content[:100])  # Use first 100 chars as ID
+            if content_hash not in seen_content:
+                seen_content.add(content_hash)
+                combined_docs.append(doc)
+        
+        # Return top 20 unique documents
+        return combined_docs[:20]
+    
     def build_chain(self):
         """Build the complete RAG chain with query rewriting."""
-        retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 15})
         prompt = self._create_prompt_template()
         llm = self._get_llm()
         
-        # Chain that rewrites query, retrieves docs, and generates response
+        # Chain with enhanced retrieval
         self._chain = (
             {
-                "context": RunnableLambda(self.rewrite_query) | retriever | self._format_documents,
+                "context": RunnableLambda(self._enhanced_retrieval) | self._format_documents,
                 "question": RunnablePassthrough()
             }
             | prompt
@@ -276,9 +304,8 @@ Ta réponse chaleureuse :"""
             yield chunk
     
     def get_relevant_documents(self, question: str, k: int = 8) -> List[Document]:
-        """Get relevant documents for a question (uses rewritten query)."""
-        rewritten = self.rewrite_query(question)
-        return self.vector_store_manager.similarity_search(rewritten, k=k)
+        """Get relevant documents for a question (uses enhanced retrieval)."""
+        return self._enhanced_retrieval(question)[:k]
 
 
 class RAGQueryHandler:
