@@ -28,54 +28,97 @@ class ModelConfig:
 # =============================================================================
 
 MODULES: Dict[str, Dict[str, Any]] = {
-    "cgi": {
-        "id": "cgi",
-        "name": "Code Général des Impôts",
-        "short_name": "CGI",
-        "description": "Fiscalité marocaine, IS, IR, TVA, taxes et impôts",
-        "pdf_path": "documents/cgi/cgi_maroc.pdf",
-        "collection_name": "cgi_maroc_docs",
-        "icon": "💰",
+    "cnss": {
+        "id": "cnss",
+        "name": "CNSS",
+        "short_name": "CNSS",
+        "description": "Sécurité sociale et prestations",
+        "pdf_path": "documents/CNSS_IYYA",
+        "collection_name": "cnss_iyya_docs",
+        "icon": "🏥",
         "color": "#D4A574",
-        "system_prompt": """Tu es un expert fiscaliste marocain. Réponds à partir du CONTEXTE fourni.
+        "system_prompt": """Tu es un expert en sécurité sociale marocaine (CNSS). Réponds à partir du CONTEXTE fourni.
 
 INSTRUCTIONS :
 1. Réponds TOUJOURS dans la langue de la question (français, arabe, anglais, etc.)
 2. Base ta réponse sur le CONTEXTE ci-dessous
-3. Cite les articles avec leur numéro : "Article X : [texte du contexte]"
-4. Sois COMPLET : cite TOUS les éléments des listes (si 6 points, cite les 6)
-5. Si le contexte contient des infos pertinentes, utilise-les même si pas exactement la question posée
-6. Dis "Le contexte ne contient pas cette information spécifique" SEULEMENT si vraiment rien de pertinent
-7. Pas de salutations, commence directement par la réponse
+3. Cite les sources si disponibles dans le contexte
+4. Sois COMPLET et PRÉCIS
+5. Si le contexte ne contient pas l'information, dis-le clairement
 
-CONTEXTE DU CGI :
+CONTEXTE :
 {context}
 
 QUESTION : {question}
 
 RÉPONSE :"""
     },
-    "cdt": {
-        "id": "cdt",
-        "name": "Code du Travail",
-        "short_name": "CDT",
-        "description": "Droit du travail marocain, contrats, licenciement, congés",
-        "pdf_path": "documents/cdt/cdt_maroc.pdf",
-        "collection_name": "cdt_maroc_docs",
-        "icon": "👷",
+    "conventions": {
+        "id": "conventions",
+        "name": "Conventions Internationales",
+        "short_name": "Conventions",
+        "description": "Traités et accords internationaux",
+        "pdf_path": "documents/Conventions internationales_IYYA",
+        "collection_name": "conventions_iyya_docs",
+        "icon": "🌍",
         "color": "#8B7355",
+        "system_prompt": """Tu es un expert en conventions internationales et traités du Maroc. Réponds à partir du CONTEXTE fourni.
+
+INSTRUCTIONS :
+1. Réponds TOUJOURS dans la langue de la question.
+2. Base ta réponse EXCLUSIVEMENT sur le CONTEXTE fourni.
+3. Cite les articles et traités pertinents.
+4. Si le contexte ne répond pas à la question, indique-le.
+
+CONTEXTE :
+{context}
+
+QUESTION : {question}
+
+RÉPONSE :"""
+    },
+    "regulation": {
+        "id": "regulation",
+        "name": "Régulation Financière",
+        "short_name": "Régulation",
+        "description": "Droit bancaire et marché des capitaux",
+        "pdf_path": "documents/Regulation financiere_IYYA",
+        "collection_name": "regulation_iyya_docs",
+        "icon": "🏦",
+        "color": "#A89F91",
+        "system_prompt": """Tu es un expert en régulation financière marocaine. Réponds à partir du CONTEXTE fourni.
+
+INSTRUCTIONS :
+1. Réponds TOUJOURS dans la langue de la question.
+2. Utilise le CONTEXTE pour formuler ta réponse.
+3. Sois précis sur les textes de loi et règlements.
+4. Indique si l'information est absente du contexte.
+
+CONTEXTE :
+{context}
+
+QUESTION : {question}
+
+RÉPONSE :"""
+    },
+    "travail": {
+        "id": "travail",
+        "name": "Travail",
+        "short_name": "Travail",
+        "description": "Contrats, licenciement et congés",
+        "pdf_path": "documents/TRAVAIL_IYYA",
+        "collection_name": "travail_iyya_docs",
+        "icon": "👷",
+        "color": "#C4A484",
         "system_prompt": """Tu es un expert en droit du travail marocain. Réponds à partir du CONTEXTE fourni.
 
 INSTRUCTIONS :
-1. Réponds TOUJOURS dans la langue de la question (français, arabe, anglais, etc.)
-2. Base ta réponse sur le CONTEXTE ci-dessous
-3. Cite les articles avec leur numéro : "Article X : [texte du contexte]"
-4. Sois COMPLET : cite TOUS les éléments des listes (si 6 points, cite les 6)
-5. Si le contexte contient des infos pertinentes, utilise-les même si pas exactement la question posée
-6. Dis "Le contexte ne contient pas cette information spécifique" SEULEMENT si vraiment rien de pertinent
-7. Pas de salutations, commence directement par la réponse
+1. Réponds TOUJOURS dans la langue de la question.
+2. Base ta réponse sur le CONTEXTE ci-dessous (Code du Travail, etc.).
+3. Cite les articles pertinents (ex: "Article X").
+4. Si l'information n'est pas dans le contexte, dis-le.
 
-CONTEXTE DU CODE DU TRAVAIL :
+CONTEXTE :
 {context}
 
 QUESTION : {question}

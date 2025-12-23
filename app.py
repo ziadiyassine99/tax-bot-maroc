@@ -19,7 +19,7 @@ from rag_chain import RAGChainBuilder, RAGQueryHandler, create_rag_chain
 st.set_page_config(
     page_title="IYYA - Assistant Juridique",
     page_icon="⚖️",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
@@ -43,6 +43,12 @@ def apply_golden_theme():
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
+
+        /* Reduce top padding to move header up */
+        .block-container {
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+        }
         
         /* Main title styling */
         .main-title {
@@ -190,7 +196,7 @@ def apply_golden_theme():
             font-weight: 600;
             color: #8B6914;
             text-align: center;
-            margin: 0.5rem 0 1rem 0;
+            margin: 0rem 0 1rem 0;
             padding: 0.5rem;
             border-bottom: 2px solid #D4A574;
         }
@@ -321,16 +327,15 @@ def render_home_page():
         unsafe_allow_html=True
     )
     
-    st.markdown("---")
-    
     # Section header
     st.markdown('<div class="section-header">Choisissez votre module</div>', unsafe_allow_html=True)
     
     # Module cards in columns
-    cols = st.columns(2)
+    cols = st.columns(4)
     
+    # Iterate over modules and display them in columns
     for idx, (module_id, module_config) in enumerate(MODULES.items()):
-        with cols[idx % 2]:
+        with cols[idx % 4]:
             # Create a card-like button
             card_html = f"""
             <div class="module-card">

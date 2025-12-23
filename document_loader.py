@@ -4,33 +4,34 @@ Handles loading and chunking of PDF documents for any module.
 """
 
 import os
+import glob
 from typing import List, Dict, Any
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain_core.documents import Document
 
 from config import ChunkingConfig
 
 
 class PDFLoadError(Exception):
-    """Custom exception for PDF loading errors."""
+    """Custom exception for document loading errors."""
     pass
 
 
 class DocumentProcessor:
     """
-    Handles PDF document loading and text chunking for any module.
+    Handles document loading (PDF, DOCX) from files or directories and text chunking.
     
     Attributes:
-        pdf_path: Path to the PDF file
+        source_path: Path to the file or directory
         chunk_size: Size of each text chunk
         chunk_overlap: Overlap between consecutive chunks
     """
     
     def __init__(
         self,
-        pdf_path: str,
+        pdf_path: str,  # Keeping param name for compatibility, but it acts as source_path
         chunk_size: int = ChunkingConfig.CHUNK_SIZE,
         chunk_overlap: int = ChunkingConfig.CHUNK_OVERLAP
     ):
@@ -38,11 +39,11 @@ class DocumentProcessor:
         Initialize the document processor.
         
         Args:
-            pdf_path: Path to the PDF file to process
+            pdf_path: Path to the file or directory to process
             chunk_size: Maximum size of each chunk
             chunk_overlap: Number of characters to overlap between chunks
         """
-        self.pdf_path = pdf_path
+        self.source_path = pdf_path
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self._text_splitter = self._create_text_splitter()
@@ -56,43 +57,64 @@ class DocumentProcessor:
             separators=["\n\n", "\n", ".", " ", ""]
         )
     
-    def validate_pdf_exists(self) -> bool:
-        """Check if the PDF file exists."""
-        return os.path.exists(self.pdf_path)
+    def validate_source_exists(self) -> bool:
+        """Check if the source file or directory exists."""
+        return os.path.exists(self.source_path)
     
-    def load_pdf(self) -> List[Document]:
+    def load_documents(self) -> List[Document]:
         """
-        Load the PDF document.
+        Load documents from the source path (file or directory).
+        Supports .pdf and .docx files.
         
         Returns:
-            List[Document]: List of document pages
+            List[Document]: List of all loaded document pages
             
         Raises:
-            PDFLoadError: If the PDF file cannot be loaded
+            PDFLoadError: If the source path is invalid or empty
         """
-        if not self.validate_pdf_exists():
+        if not self.validate_source_exists():
             raise PDFLoadError(
-                f"Le fichier PDF '{self.pdf_path}' n'a pas été trouvé. "
-                f"Veuillez placer le fichier dans le répertoire racine."
+                f"Le chemin '{self.source_path}' n'a pas été trouvé. "
             )
         
-        try:
-            loader = PyPDFLoader(self.pdf_path)
-            documents = loader.load()
-            
-            if not documents:
-                raise PDFLoadError(
-                    f"Le fichier PDF '{self.pdf_path}' est vide ou ne peut pas être lu."
-                )
-            
-            return documents
-            
-        except PDFLoadError:
-            raise
-        except Exception as e:
-            raise PDFLoadError(
-                f"Erreur lors du chargement du PDF: {str(e)}"
+        all_documents = []
+        files_to_process = []
+
+        if os.path.isfile(self.source_path):
+            files_to_process.append(self.source_path)
+        elif os.path.isdir(self.source_path):
+            # Recursively find all supported files
+            for root, dirs, files in os.walk(self.source_path):
+                for file in files:
+                    if file.lower().endswith(('.pdf', '.docx')):
+                        files_to_process.append(os.path.join(root, file))
+        
+        if not files_to_process:
+             raise PDFLoadError(
+                f"Aucun document supporté (PDF, DOCX) trouvé dans '{self.source_path}'."
             )
+
+        print(f"Found {len(files_to_process)} files to process in {self.source_path}")
+
+        for file_path in files_to_process:
+            try:
+                if file_path.lower().endswith('.pdf'):
+                    loader = PyPDFLoader(file_path)
+                    all_documents.extend(loader.load())
+                elif file_path.lower().endswith('.docx'):
+                    loader = Docx2txtLoader(file_path)
+                    all_documents.extend(loader.load())
+            except Exception as e:
+                print(f"Error loading file {file_path}: {e}")
+                # We continue processing other files even if one fails
+                continue
+        
+        if not all_documents:
+            raise PDFLoadError(
+                f"Impossible de lire les documents dans '{self.source_path}'."
+            )
+            
+        return all_documents
     
     def split_documents(self, documents: List[Document]) -> List[Document]:
         """
@@ -108,21 +130,23 @@ class DocumentProcessor:
         
         for i, chunk in enumerate(chunks):
             chunk.metadata["chunk_id"] = i
-            chunk.metadata["source"] = self.pdf_path
+            # Ensure source is set to valid path string
+            if "source" not in chunk.metadata:
+                 chunk.metadata["source"] = self.source_path
         
         return chunks
     
     def load_and_split(self) -> List[Document]:
         """
-        Load PDF and split into chunks in one operation.
+        Load documents and split into chunks in one operation.
         
         Returns:
             List[Document]: List of chunked documents
             
         Raises:
-            PDFLoadError: If loading or processing fails
+            PDFLoadError: If loading or processing fails completely
         """
-        documents = self.load_pdf()
+        documents = self.load_documents()
         return self.split_documents(documents)
 
 
@@ -136,4 +160,5 @@ def create_document_processor(module_config: Dict[str, Any]) -> DocumentProcesso
     Returns:
         DocumentProcessor: Configured document processor instance
     """
+    # We use 'pdf_path' key from config but it can now be a directory
     return DocumentProcessor(pdf_path=module_config["pdf_path"])
