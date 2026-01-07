@@ -212,7 +212,8 @@ Ta réponse chaleureuse :"""
     
     def build_chain(self):
         """Build the complete RAG chain with query rewriting."""
-        retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 15})
+        # k=20 pour capturer plus de contexte et éviter de manquer des informations importantes
+        retriever = self.vector_store_manager.get_retriever(search_kwargs={"k": 20})
         prompt = self._create_prompt_template()
         llm = self._get_llm()
         
