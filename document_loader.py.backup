@@ -8,7 +8,7 @@ import glob
 from typing import List, Dict, Any
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain_core.documents import Document
 
 from config import ChunkingConfig
@@ -83,15 +83,16 @@ class DocumentProcessor:
         if os.path.isfile(self.source_path):
             files_to_process.append(self.source_path)
         elif os.path.isdir(self.source_path):
-            # Recursively find all supported files (.pdf, .docx, .doc)
+            # Recursively find all supported files (.pdf, .docx)
+            # Note: .doc files require LibreOffice and are skipped
             for root, dirs, files in os.walk(self.source_path):
                 for file in files:
-                    if file.lower().endswith(('.pdf', '.docx', '.doc')):
+                    if file.lower().endswith(('.pdf', '.docx')):
                         files_to_process.append(os.path.join(root, file))
         
         if not files_to_process:
              raise PDFLoadError(
-                f"Aucun document supporté (PDF, DOCX, DOC) trouvé dans '{self.source_path}'."
+                f"Aucun document supporté (PDF, DOCX) trouvé dans '{self.source_path}'."
             )
 
         print(f"Found {len(files_to_process)} files to process in {self.source_path}")

@@ -70,18 +70,6 @@ def apply_golden_theme():
             margin-bottom: 0.5rem;
         }
         
-        /* Force uniform column heights */
-        [data-testid="column"] {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        [data-testid="column"] > div {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
         /* Module cards */
         .module-card {
             background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%);
@@ -92,9 +80,6 @@ def apply_golden_theme():
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(139, 105, 20, 0.15);
-            height: 240px; /* Fixed height for perfect alignment */
-            display: flex;
-            flex-direction: column;
         }
         
         .module-card:hover {
@@ -110,18 +95,16 @@ def apply_golden_theme():
         
         .module-name {
             font-family: 'Playfair Display', serif;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 600;
             color: #5D4E37;
             margin-bottom: 0.25rem;
-            min-height: 3rem;
         }
         
         .module-desc {
             font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: #7A6B5A;
-            flex-grow: 1;
         }
         
         /* Chat styling */
@@ -263,7 +246,7 @@ def set_current_module(module_id: str):
         module_config = get_module_config(module_id)
         st.session_state.messages[module_id] = [
             {
-                "role": "assistant",
+                "role": "assistant",*
                 "content": f"Bonjour ! Je suis votre assistant spécialisé dans le **{module_config['name']}**. 🇲🇦\n\nPosez-moi vos questions et je vous répondrai en citant les articles pertinents."
             }
         ]
@@ -349,11 +332,11 @@ def render_home_page():
     st.markdown('<div class="section-header">Choisissez votre module</div>', unsafe_allow_html=True)
     
     # Module cards in columns
-    cols = st.columns(5)
+    cols = st.columns(4)
     
     # Iterate over modules and display them in columns
     for idx, (module_id, module_config) in enumerate(MODULES.items()):
-        with cols[idx % 5]:
+        with cols[idx % 4]:
             # Create a card-like button
             card_html = f"""
             <div class="module-card">
