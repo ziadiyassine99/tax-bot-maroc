@@ -11,8 +11,8 @@ from typing import Dict, Any
 @dataclass(frozen=True)
 class ChunkingConfig:
     """Configuration for document chunking."""
-    CHUNK_SIZE: int = 1500
-    CHUNK_OVERLAP: int = 300
+    CHUNK_SIZE: int = 2500
+    CHUNK_OVERLAP: int = 500
 
 
 @dataclass(frozen=True)
@@ -49,6 +49,7 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 2. **PRÉCISION DES TAUX ET CHIFFRES** :
    - Cite les taux EXACTS comme ils apparaissent dans le texte (ex: 4,52%, pas d'arrondi)
    - Si un taux a un minimum/maximum/plafond, mentionne-le précisément
+   - **Liste TOUS les taux/cas applicables** sans en omettre
    - Ne jamais inventer ou approximer un chiffre
 
 3. **VÉRIFICATION DU CONTEXTE** :
@@ -59,6 +60,7 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 4. **FORMAT DE RÉPONSE** :
    - Commence par la référence légale complète
    - Donne la réponse précise avec les chiffres exacts
+   - **NE PAS afficher l'historique des modifications** (ex: "modifié par la loi X"). Donne uniquement la règle en vigueur.
    - Termine par "Source: [référence du décret/article]"
 
 5. **SI INFORMATION ABSENTE** :
@@ -180,11 +182,13 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 3. **PRÉCISION DES CHIFFRES** :
    - Durées exactes (préavis, congés, etc.)
    - Montants et taux exacts (SMIG, indemnités, etc.)
+   - **Lister TOUS les cas possibles** sans en omettre
    - Ne jamais arrondir ou approximer
 
 4. **FORMAT DE RÉPONSE** :
    - Commencer par la référence légale complète avec sa DATE
-   - Donner la réponse précise avec les chiffres exacts
+   - Donner la réponse précise avec les chiffres exacts (uniquement ceux en vigueur)
+   - **NE PAS lister les anciens décrets** ou l'historique des changements
    - Terminer par "Source: [référence avec date]"
 
 5. **VÉRIFICATION** : Relire le contexte 2 fois. Identifier TOUS les décrets mentionnés et choisir le plus récent.
@@ -217,6 +221,7 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 2. **PRÉCISION DES TAUX ET CHIFFRES** :
    - Cite les taux EXACTS comme ils apparaissent dans le texte (ex: 20%, 31%, 37%)
    - Si un taux a des tranches ou seuils, mentionne-les précisément
+   - **Liste TOUS les taux/tranches applicables** (même les cas spécifiques comme 40% ou 8,75%)
    - Ne jamais inventer ou approximer un chiffre
 
 3. **TYPES D'IMPÔTS** :
@@ -228,6 +233,7 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 4. **FORMAT DE RÉPONSE** :
    - Commence par la référence légale complète (article du CGI)
    - Donne la réponse précise avec les chiffres exacts
+   - **NE PAS citer l'historique législatif** (ex: "modifié par la LF 2023, puis LF 2024"). Donne directement le taux actuel appliqué.
    - Termine par "Source: [référence de l'article]"
 
 5. **SI INFORMATION ABSENTE** :

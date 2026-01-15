@@ -407,6 +407,21 @@ class RAGQueryHandler:
             return []
         sources = self.rag_chain.get_relevant_documents(question)
         return list(set(doc.metadata.get("page", "N/A") for doc in sources))
+    
+    def get_source_documents(self, question: str, k: int = 5) -> List[Document]:
+        """
+        Get the actual source documents for a question.
+        
+        Args:
+            question: The user's question
+            k: Number of top documents to return
+            
+        Returns:
+            List of Document objects with content and metadata
+        """
+        if is_conversational_query(question):
+            return []
+        return self.rag_chain.get_relevant_documents(question, k=k)
 
 
 def create_rag_chain(
