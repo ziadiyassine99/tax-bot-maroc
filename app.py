@@ -10,6 +10,7 @@ from config import MODULES, get_module_config
 from document_loader import DocumentProcessor, PDFLoadError
 from vector_store import VectorStoreManager, create_vector_store_manager
 from rag_chain import RAGChainBuilder, RAGQueryHandler, create_rag_chain
+from article_tooltip import extract_article_citations, format_response_with_tooltips
 
 
 # =============================================================================
@@ -279,6 +280,61 @@ def apply_golden_theme():
             max-height: 100px;
             overflow-y: auto;
         }
+        
+        /* Article tooltip styling */
+        .article-link {
+            color: #8B6914;
+            font-weight: 600;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            cursor: pointer;
+            position: relative;
+            display: inline;
+        }
+        
+        .article-link:hover {
+            color: #B8860B;
+            text-decoration-style: solid;
+        }
+        
+        .article-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%);
+            border: 2px solid #D4A574;
+            padding: 1rem;
+            border-radius: 12px;
+            max-width: 450px;
+            min-width: 300px;
+            max-height: 350px;
+            overflow-y: auto;
+            z-index: 9999;
+            box-shadow: 0 8px 25px rgba(139, 105, 20, 0.3);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #2D2A26;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            text-align: left;
+        }
+        
+        .article-link:hover .article-tooltip,
+        .article-link:focus .article-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .article-tooltip strong {
+            color: #8B6914;
+            font-size: 0.95rem;
+            display: block;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #D4A574;
+            padding-bottom: 0.5rem;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -297,6 +353,8 @@ def init_session_state():
         st.session_state.sources = {}  # Store sources for each message
     if "module_initialized" not in st.session_state:
         st.session_state.module_initialized = {}
+    if "cached_articles" not in st.session_state:
+        st.session_state.cached_articles = {}  # Cache article content for tooltips
 
 
 def set_current_module(module_id: str):
@@ -507,7 +565,11 @@ def render_chat_page(module_id: str):
     # Chat history - display messages with their sources
     for idx, message in enumerate(st.session_state.messages.get(module_id, [])):
         with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+            # For assistant messages, check if we have formatted content with tooltips
+            if message["role"] == "assistant" and "formatted_content" in message:
+                st.markdown(message["formatted_content"], unsafe_allow_html=True)
+            else:
+                st.markdown(message["content"])
             
             # Show sources for assistant messages (except the initial greeting)
             if message["role"] == "assistant" and idx > 0:
@@ -572,13 +634,40 @@ def render_chat_page(module_id: str):
                         </div>
                         """, unsafe_allow_html=True)
         
-        # Add assistant message and store sources
-        st.session_state.messages[module_id].append({"role": "assistant", "content": response})
+        # Extract article citations and fetch their content for tooltips
+        article_nums = extract_article_citations(response)
+        
+        # Initialize module cache if needed
+        if module_id not in st.session_state.cached_articles:
+            st.session_state.cached_articles[module_id] = {}
+        
+        # Fetch content for articles not yet cached
+        for article_num in article_nums:
+            if article_num not in st.session_state.cached_articles[module_id]:
+                with st.spinner(f"Chargement de l'article {article_num}..."):
+                    article_content = query_handler.fetch_article_direct(article_num, module_config["name"])
+                    st.session_state.cached_articles[module_id][article_num] = article_content
+        
+        # Format response with clickable tooltips
+        formatted_response = format_response_with_tooltips(
+            response, 
+            st.session_state.cached_articles[module_id]
+        )
+        
+        # Add assistant message with both original and formatted content
+        st.session_state.messages[module_id].append({
+            "role": "assistant", 
+            "content": response,
+            "formatted_content": formatted_response
+        })
         
         # Store sources with message index
         msg_idx = len(st.session_state.messages[module_id]) - 1
         sources_key = f"{module_id}_{msg_idx}"
         st.session_state.sources[sources_key] = formatted_sources
+        
+        # Rerun to display the formatted message with tooltips
+        st.rerun()
     
     # Clear chat button
     st.markdown("---")

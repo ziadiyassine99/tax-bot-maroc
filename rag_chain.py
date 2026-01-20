@@ -422,6 +422,55 @@ class RAGQueryHandler:
         if is_conversational_query(question):
             return []
         return self.rag_chain.get_relevant_documents(question, k=k)
+    
+    def fetch_article_direct(self, article_num: str, module_name: str) -> str:
+        """
+        Fetch the complete content of a specific article.
+        
+        This method searches directly in the vector store for chunks containing
+        the article number, then returns the raw content without LLM processing.
+        
+        Args:
+            article_num: The article number (e.g., "92", "101", "8-1")
+            module_name: The module name for context (e.g., "CGI", "Code du Travail")
+            
+        Returns:
+            The article content found in the documents
+        """
+        try:
+            # Search for chunks that mention this specific article
+            # Use multiple search terms to maximize chances of finding it
+            search_queries = [
+                f"Article {article_num}",
+                f"article {article_num}",
+                f"Art. {article_num}",
+            ]
+            
+            all_chunks = []
+            seen_content = set()
+            
+            for query in search_queries:
+                # Direct similarity search in vector store
+                docs = self.rag_chain.vector_store_manager.similarity_search(query, k=10)
+                for doc in docs:
+                    # Check if this chunk actually contains the article number
+                    content = doc.page_content
+                    if f"article {article_num}" in content.lower() or f"art. {article_num}" in content.lower():
+                        # Avoid duplicates
+                        content_hash = hash(content[:200])
+                        if content_hash not in seen_content:
+                            seen_content.add(content_hash)
+                            all_chunks.append(content)
+            
+            if all_chunks:
+                # Combine the chunks found
+                result = "\n\n---\n\n".join(all_chunks[:3])  # Take top 3 relevant chunks
+                return result
+            else:
+                return f"Article {article_num} non trouvé dans les documents."
+                
+        except Exception as e:
+            return f"Erreur lors de la récupération de l'article {article_num}: {str(e)}"
 
 
 def create_rag_chain(

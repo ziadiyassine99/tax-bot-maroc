@@ -41,10 +41,11 @@ MODULES: Dict[str, Dict[str, Any]] = {
 
 RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 
-1. **RÉFÉRENCES LÉGALES OBLIGATOIRES** :
-   - TOUJOURS citer le numéro du décret/loi (ex: "Décret n° 2-05-734 du 18 juillet 2005")
-   - TOUJOURS mentionner l'article exact (ex: "Article 3", "Article 4")
-   - TOUJOURS donner la date de publication si disponible
+1. **FORMAT DE CITATION OBLIGATOIRE** :
+   - TOUJOURS commencer par citer les articles avec "En vigueur de l'article X du [décret/loi]"
+   - Si UN seul article : "En vigueur de l'article X du Décret n° Y, [réponse]"
+   - Si PLUSIEURS articles : "En vigueur de l'article X du Décret n° Y, en vigueur de l'article Z du Décret n° W, [réponse]"
+   - Liste TOUS les articles pertinents AVANT de donner la réponse
 
 2. **PRÉCISION DES TAUX ET CHIFFRES** :
    - Cite les taux EXACTS comme ils apparaissent dans le texte (ex: 4,52%, pas d'arrondi)
@@ -57,22 +58,19 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
    - Cherche les variantes orthographiques (AMO, A.M.O., assurance maladie obligatoire)
    - Si tu trouves l'information, cite-la mot pour mot
 
-4. **FORMAT DE RÉPONSE** :
-   - Commence par la référence légale complète
-   - Donne la réponse précise avec les chiffres exacts
+4. **RÈGLES SUPPLÉMENTAIRES** :
    - **NE PAS afficher l'historique des modifications** (ex: "modifié par la loi X"). Donne uniquement la règle en vigueur.
-   - Termine par "Source: [référence du décret/article]"
+   - Ne JAMAIS inventer de taux ou d'article
 
 5. **SI INFORMATION ABSENTE** :
    - Dis clairement : "Cette information n'est pas présente dans les documents fournis."
-   - Ne JAMAIS inventer de taux ou d'article
 
 CONTEXTE :
 {context}
 
 QUESTION : {question}
 
-RÉPONSE (avec références légales complètes) :"""
+RÉPONSE (commencer par "En vigueur de l'article...") :"""
     },
     "conventions": {
         "id": "conventions",
@@ -87,31 +85,29 @@ RÉPONSE (avec références légales complètes) :"""
 
 RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 
-1. **RÉFÉRENCES OBLIGATOIRES** :
-   - TOUJOURS citer le nom complet de la convention/traité
-   - TOUJOURS mentionner la date de signature et/ou ratification
-   - TOUJOURS citer l'article ou paragraphe concerné
-   - Mentionner le Dahir de ratification si disponible
+1. **FORMAT DE CITATION OBLIGATOIRE** :
+   - TOUJOURS commencer par citer les articles avec "En vigueur de l'article X de la Convention/Traité Y"
+   - Si UN seul article : "En vigueur de l'article X de la Convention Y, [réponse]"
+   - Si PLUSIEURS articles : "En vigueur de l'article X de la Convention Y, en vigueur de l'article Z de la Convention W, [réponse]"
+   - Liste TOUS les articles pertinents AVANT de donner la réponse
 
 2. **PRÉCISION** :
    - Cite les termes exacts du texte
    - Mentionne les pays signataires si pertinent
    - Précise le champ d'application
+   - Mentionner le Dahir de ratification si disponible
 
-3. **FORMAT DE RÉPONSE** :
-   - Nom complet de la convention en premier
-   - Date et référence de ratification
-   - Contenu précis de l'article
-   - Source citée en fin
+3. **VÉRIFICATION** : Relis le contexte attentivement avant de conclure que l'information est absente.
 
-4. **VÉRIFICATION** : Relis le contexte attentivement avant de conclure que l'information est absente.
+4. **SI INFORMATION ABSENTE** :
+   - Dis clairement : "Cette information n'est pas présente dans les documents fournis."
 
 CONTEXTE :
 {context}
 
 QUESTION : {question}
 
-RÉPONSE (avec références complètes) :"""
+RÉPONSE (commencer par "En vigueur de l'article...") :"""
     },
     "regulation": {
         "id": "regulation",
@@ -126,10 +122,11 @@ RÉPONSE (avec références complètes) :"""
 
 RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 
-1. **RÉFÉRENCES LÉGALES OBLIGATOIRES** :
-   - TOUJOURS citer le numéro complet du texte (ex: "Instruction n° P.IN.01/2024", "Circulaire n° X")
-   - TOUJOURS mentionner l'article ou section concernée
-   - TOUJOURS donner les dates d'entrée en vigueur
+1. **FORMAT DE CITATION OBLIGATOIRE** :
+   - TOUJOURS commencer par citer les articles avec "En vigueur de l'article X de l'Instruction/Circulaire Y"
+   - Si UN seul article : "En vigueur de l'article X de l'Instruction n° Y, [réponse]"
+   - Si PLUSIEURS articles : "En vigueur de l'article X de l'Instruction n° Y, en vigueur de l'article Z de la Circulaire n° W, [réponse]"
+   - Liste TOUS les articles pertinents AVANT de donner la réponse
 
 2. **NORMES COMPTABLES (IFRS, PCEC)** :
    - Cite les dates précises d'application (ex: "à partir de l'exercice clos du 31 décembre 2024")
@@ -141,19 +138,15 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
    - Cherche les termes : IFRS, états financiers consolidés, normes comptables, reporting
    - L'information existe souvent sous une formulation différente
 
-4. **FORMAT DE RÉPONSE** :
-   - Référence légale complète en premier
-   - Information précise avec dates et chiffres exacts
-   - Source citée en fin de réponse
-
-5. **IMPORTANT** : Avant de dire que l'information n'est pas disponible, vérifie TOUS les passages du contexte. L'information peut être formulée différemment.
+4. **SI INFORMATION ABSENTE** :
+   - Dis clairement : "Cette information n'est pas présente dans les documents fournis."
 
 CONTEXTE :
 {context}
 
 QUESTION : {question}
 
-RÉPONSE (avec références légales complètes) :"""
+RÉPONSE (commencer par "En vigueur de l'article...") :"""
     },
     "travail": {
         "id": "travail",
@@ -168,16 +161,16 @@ RÉPONSE (avec références légales complètes) :"""
 
 RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 
-1. **RÈGLE DE PRIORITÉ TEMPORELLE** ⚠️ :
+1. **FORMAT DE CITATION OBLIGATOIRE** :
+   - TOUJOURS commencer par citer les articles avec "En vigueur de l'article X du Code du Travail/Décret Y"
+   - Si UN seul article : "En vigueur de l'article X du Code du Travail, [réponse]"
+   - Si PLUSIEURS articles : "En vigueur de l'article X du Code du Travail, en vigueur de l'article Y du Décret n° Z, [réponse]"
+   - Liste TOUS les articles pertinents AVANT de donner la réponse
+
+2. **RÈGLE DE PRIORITÉ TEMPORELLE** ⚠️ :
    - Si plusieurs décrets/textes donnent des MONTANTS DIFFÉRENTS pour le même sujet (SMIG, SMAG, indemnités, etc.)
    - UTILISE TOUJOURS le décret avec la DATE LA PLUS RÉCENTE
    - Les décrets récents REMPLACENT les anciens (ex: décret 2026 remplace décret 2025)
-   - Mentionne explicitement que tu utilises le texte le plus récent
-
-2. **RÉFÉRENCES LÉGALES OBLIGATOIRES** :
-   - TOUJOURS citer la référence exacte (ex: "Code du Travail - Loi n° 65-99", "Décret n° 2-25-983")
-   - TOUJOURS mentionner l'article précis (ex: "Article 51", "Article 184")
-   - TOUJOURS mentionner la DATE du décret (ex: "du 29 décembre 2025")
 
 3. **PRÉCISION DES CHIFFRES** :
    - Durées exactes (préavis, congés, etc.)
@@ -185,20 +178,19 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
    - **Lister TOUS les cas possibles** sans en omettre
    - Ne jamais arrondir ou approximer
 
-4. **FORMAT DE RÉPONSE** :
-   - Commencer par la référence légale complète avec sa DATE
-   - Donner la réponse précise avec les chiffres exacts (uniquement ceux en vigueur)
+4. **RÈGLES SUPPLÉMENTAIRES** :
    - **NE PAS lister les anciens décrets** ou l'historique des changements
-   - Terminer par "Source: [référence avec date]"
+   - Ne JAMAIS inventer de chiffres ou d'articles
 
-5. **VÉRIFICATION** : Relire le contexte 2 fois. Identifier TOUS les décrets mentionnés et choisir le plus récent.
+5. **SI INFORMATION ABSENTE** :
+   - Dis clairement : "Cette information n'est pas présente dans les documents fournis."
 
 CONTEXTE :
 {context}
 
 QUESTION : {question}
 
-RÉPONSE (utiliser le décret le plus récent) :"""
+RÉPONSE (commencer par "En vigueur de l'article...") :"""
     },
     "cgi": {
         "id": "cgi",
@@ -213,10 +205,11 @@ RÉPONSE (utiliser le décret le plus récent) :"""
 
 RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
 
-1. **RÉFÉRENCES LÉGALES OBLIGATOIRES** :
-   - TOUJOURS citer le numéro de l'article du CGI (ex: "Article 19 du CGI", "Article 73 du CGI")
-   - TOUJOURS mentionner la loi de finances applicable si pertinent
-   - TOUJOURS donner la date d'entrée en vigueur si disponible
+1. **FORMAT DE CITATION OBLIGATOIRE** :
+   - TOUJOURS commencer par citer les articles avec "En vigueur de l'article X du CGI"
+   - Si UN seul article : "En vigueur de l'article X du CGI, [réponse]"
+   - Si PLUSIEURS articles : "En vigueur de l'article X du CGI, en vigueur de l'article Y du CGI, [réponse]"
+   - Liste TOUS les articles pertinents AVANT de donner la réponse
 
 2. **PRÉCISION DES TAUX ET CHIFFRES** :
    - Cite les taux EXACTS comme ils apparaissent dans le texte (ex: 20%, 31%, 37%)
@@ -230,22 +223,19 @@ RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT :
    - TVA : taux, exonérations, régimes spéciaux
    - Droits d'enregistrement et timbre
 
-4. **FORMAT DE RÉPONSE** :
-   - Commence par la référence légale complète (article du CGI)
-   - Donne la réponse précise avec les chiffres exacts
+4. **RÈGLES SUPPLÉMENTAIRES** :
    - **NE PAS citer l'historique législatif** (ex: "modifié par la LF 2023, puis LF 2024"). Donne directement le taux actuel appliqué.
-   - Termine par "Source: [référence de l'article]"
+   - Ne JAMAIS inventer de taux ou d'article
 
 5. **SI INFORMATION ABSENTE** :
    - Dis clairement : "Cette information n'est pas présente dans les documents fournis."
-   - Ne JAMAIS inventer de taux ou d'article
 
 CONTEXTE :
 {context}
 
 QUESTION : {question}
 
-RÉPONSE (avec références légales complètes) :"""
+RÉPONSE (commencer par "En vigueur de l'article...") :"""
     }
 }
 
