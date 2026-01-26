@@ -11,6 +11,7 @@ from document_loader import DocumentProcessor, PDFLoadError
 from vector_store import VectorStoreManager, create_vector_store_manager
 from rag_chain import RAGChainBuilder, RAGQueryHandler, create_rag_chain
 from article_tooltip import extract_article_citations, format_response_with_tooltips
+from auth import init_auth_state, is_authenticated, render_login_page, logout
 
 
 # =============================================================================
@@ -281,7 +282,7 @@ def apply_golden_theme():
             overflow-y: auto;
         }
         
-        /* Article tooltip styling */
+        /* Article link - hoverable with tooltip */
         .article-link {
             color: #8B6914;
             font-weight: 600;
@@ -290,6 +291,7 @@ def apply_golden_theme():
             cursor: pointer;
             position: relative;
             display: inline;
+            outline: none;
         }
         
         .article-link:hover {
@@ -297,30 +299,32 @@ def apply_golden_theme():
             text-decoration-style: solid;
         }
         
+        /* Tooltip - hidden by default */
         .article-tooltip {
             visibility: hidden;
             opacity: 0;
-            position: absolute;
-            bottom: 100%;
+            position: fixed;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
             background: linear-gradient(135deg, #FFF8EC 0%, #F5EBD7 100%);
-            border: 2px solid #D4A574;
-            padding: 1rem;
-            border-radius: 12px;
-            max-width: 450px;
-            min-width: 300px;
-            max-height: 350px;
+            border: 3px solid #D4A574;
+            padding: 1.5rem;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 50vh;
             overflow-y: auto;
-            z-index: 9999;
-            box-shadow: 0 8px 25px rgba(139, 105, 20, 0.3);
-            font-size: 0.85rem;
-            line-height: 1.5;
+            z-index: 10001;
+            box-shadow: 0 20px 60px rgba(139, 105, 20, 0.5);
+            font-size: 0.9rem;
+            line-height: 1.7;
             color: #2D2A26;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
             text-align: left;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
         }
         
+        /* Show tooltip on hover OR focus (click makes it persistent) */
         .article-link:hover .article-tooltip,
         .article-link:focus .article-tooltip {
             visibility: visible;
@@ -329,12 +333,13 @@ def apply_golden_theme():
         
         .article-tooltip strong {
             color: #8B6914;
-            font-size: 0.95rem;
+            font-size: 1.1rem;
             display: block;
             margin-bottom: 0.5rem;
-            border-bottom: 1px solid #D4A574;
             padding-bottom: 0.5rem;
+            border-bottom: 2px solid #D4A574;
         }
+        
         </style>
     """, unsafe_allow_html=True)
 
@@ -345,6 +350,9 @@ def apply_golden_theme():
 
 def init_session_state():
     """Initialize session state variables."""
+    # Initialize authentication state first
+    init_auth_state()
+    
     if "current_module" not in st.session_state:
         st.session_state.current_module = None
     if "messages" not in st.session_state:
@@ -439,6 +447,14 @@ def get_rag_chain(_vs_manager: VectorStoreManager, module_id: str, version: str 
 def render_home_page():
     """Render the home page with module selection."""
     
+    # User bar with logout button
+    col_user1, col_user2, col_user3 = st.columns([3, 1, 1])
+    with col_user2:
+        st.markdown(f"<p style='text-align: right; color: #6B5A3E; font-family: Inter, sans-serif; padding-top: 0.5rem;'>Connecté: <b>{st.session_state.username}</b></p>", unsafe_allow_html=True)
+    with col_user3:
+        if st.button("🚪 Déconnexion", key="logout_home"):
+            logout()
+    
     # Logo and title
     st.markdown('<h1 class="main-title">⚖️ IYYA</h1>', unsafe_allow_html=True)
     st.markdown(
@@ -497,9 +513,15 @@ def render_chat_page(module_id: str):
         
         st.markdown("---")
         
+        # User info
+        st.markdown(f"**Utilisateur:** {st.session_state.username}")
+        
         if st.button("← Retour à l'accueil", use_container_width=True):
             go_back_to_home()
             st.rerun()
+        
+        if st.button("🚪 Déconnexion", use_container_width=True, key="logout_chat"):
+            logout()
         
         st.markdown("---")
         
@@ -690,6 +712,11 @@ def main():
     """Main application entry point."""
     apply_golden_theme()
     init_session_state()
+    
+    # Check authentication first
+    if not is_authenticated():
+        render_login_page()
+        return
     
     if st.session_state.current_module is None:
         render_home_page()

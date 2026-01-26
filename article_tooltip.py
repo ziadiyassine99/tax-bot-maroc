@@ -58,21 +58,26 @@ def fetch_article_content(rag_chain, article_num: str, module_name: str) -> str:
 
 def format_response_with_tooltips(response: str, articles_content: Dict[str, str]) -> str:
     """
-    Replace article citations in the response with clickable HTML elements
+    Replace article citations in the response with hoverable HTML elements
     that show tooltips with full article content.
+    
+    Uses CSS hover + focus for the tooltip display:
+    - Hover shows the tooltip
+    - Click makes it persistent (focus)
+    - Click elsewhere closes it (blur)
     
     Args:
         response: The original response text
         articles_content: Dict mapping article numbers to their full content
         
     Returns:
-        HTML-formatted response with clickable article tooltips
+        HTML-formatted response with hoverable article tooltips
     """
     if not articles_content:
         return response
     
     def replace_article(match):
-        """Replace an article citation with HTML tooltip."""
+        """Replace an article citation with hoverable tooltip HTML."""
         full_match = match.group(0)  # e.g., "l'article 92" or "article 101"
         article_num = match.group(1)  # e.g., "92" or "101"
         
@@ -84,14 +89,8 @@ def format_response_with_tooltips(response: str, articles_content: Dict[str, str
         # Convert newlines to <br> for HTML display
         content = content.replace('\n', '<br>')
         
-        # Create the tooltip HTML
-        tooltip_html = f'''<span class="article-link" tabindex="0">
-{full_match}
-<span class="article-tooltip">
-<strong>Article {article_num}</strong><br><br>
-{content}
-</span>
-</span>'''
+        # Hover + focus tooltip - tabindex="0" makes it focusable for click persistence
+        tooltip_html = f'''<span class="article-link" tabindex="0">{full_match}<span class="article-tooltip"><strong>Article {article_num}</strong><br><br>{content}</span></span>'''
         
         return tooltip_html
     
