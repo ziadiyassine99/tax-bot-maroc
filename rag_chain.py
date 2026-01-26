@@ -92,41 +92,11 @@ Question reformulée (une seule phrase, sans explication):"""
 
 
 # =============================================================================
-# Conversational Query Detection
+# Conversational Query Detection (DISABLED - always use RAG)
 # =============================================================================
 
-# Patterns for conversational queries (non-legal)
-CONVERSATIONAL_PATTERNS = [
-    r"^(salut|bonjour|bonsoir|hello|hi|hey|coucou)",
-    r"^(ça va|comment vas|comment tu vas|tu vas bien|comment allez)",
-    r"^(merci|thanks|thank you)",
-    r"^(au revoir|bye|à bientôt|à plus)",
-    r"^(qui es[ -]tu|tu es qui|c'est quoi|présente[ -]toi)",
-    r"^(ok|d'accord|compris|super|parfait|génial|cool)$",
-    r"^(oui|non|ouais|nope)$",
-]
-
-
 def is_conversational_query(question: str) -> bool:
-    """Check if the question is a conversational query."""
-    question_lower = question.lower().strip()
-    
-    for pattern in CONVERSATIONAL_PATTERNS:
-        if re.search(pattern, question_lower, re.IGNORECASE):
-            return True
-    
-    # Check for short non-legal queries
-    legal_keywords = [
-        "impôt", "taxe", "tva", "is", "ir", "fiscal", "taux", "article",
-        "cgi", "déclar", "exonér", "société", "revenu", "bénéfice",
-        "auto-entrepreneur", "travail", "contrat", "licenciement", "congé",
-        "salaire", "employeur", "salarié", "cdd", "cdi", "préavis",
-        "indemnité", "syndicat", "grève", "heures", "smig"
-    ]
-    
-    if len(question_lower) < 15 and not any(kw in question_lower for kw in legal_keywords):
-        return True
-    
+    """Always return False - all queries go through RAG."""
     return False
 
 
