@@ -23,24 +23,25 @@ def render_calculator_card(calculator_id: str, expanded: bool = True) -> Optiona
         st.error(f"Calculateur non trouvé: {calculator_id}")
         return None
     
-    # Custom styling for calculator cards
+    # Custom styling for calculator cards - Golden theme
     st.markdown("""
         <style>
+        /* Calculator card container */
         .calculator-card {
-            background: linear-gradient(135deg, #F0F7FF 0%, #E8F4FD 100%);
-            border: 2px solid #4A90D9;
+            background: linear-gradient(135deg, #FDF6E3 0%, #F5ECD7 100%);
+            border: 2px solid #C9A227;
             border-radius: 16px;
             padding: 1rem;
             margin: 0.5rem 0;
         }
         .calc-title {
-            color: #2C5282;
+            color: #8B6914;
             font-weight: 600;
             font-size: 1.1rem;
         }
         .calc-result {
-            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-            border: 2px solid #4CAF50;
+            background: linear-gradient(135deg, #F0F7E6 0%, #E8F0D8 100%);
+            border: 2px solid #7D9B4E;
             border-radius: 12px;
             padding: 1rem;
             margin-top: 0.5rem;
@@ -49,14 +50,60 @@ def render_calculator_card(calculator_id: str, expanded: bool = True) -> Optiona
             display: flex;
             justify-content: space-between;
             padding: 0.25rem 0;
-            border-bottom: 1px dashed #A5D6A7;
+            border-bottom: 1px dashed #B8C99A;
         }
         .result-label {
-            color: #2E7D32;
+            color: #5D7A3A;
         }
         .result-value {
             font-weight: 600;
-            color: #1B5E20;
+            color: #3D5A1A;
+        }
+        
+        /* Style Streamlit expander for calculator */
+        [data-testid="stExpander"] {
+            background: linear-gradient(135deg, #FDF6E3 0%, #F5ECD7 100%) !important;
+            border: 2px solid #C9A227 !important;
+            border-radius: 12px !important;
+        }
+        
+        /* Style input fields inside calculator forms */
+        [data-testid="stForm"] input[type="number"],
+        [data-testid="stForm"] input[type="text"] {
+            background-color: #FFFEF8 !important;
+            color: #4A4A4A !important;
+            border: 1px solid #D4B85A !important;
+            border-radius: 8px !important;
+        }
+        
+        /* Style number input container */
+        [data-testid="stForm"] [data-testid="stNumberInput"] > div > div > input {
+            background-color: #FFFEF8 !important;
+            color: #4A4A4A !important;
+        }
+        
+        /* Style selectbox */
+        [data-testid="stForm"] [data-testid="stSelectbox"] > div > div {
+            background-color: #FFFEF8 !important;
+            color: #4A4A4A !important;
+        }
+        
+        /* Style form submit button */
+        [data-testid="stForm"] button[kind="primaryFormSubmit"] {
+            background: linear-gradient(135deg, #C9A227 0%, #B8860B 100%) !important;
+            color: white !important;
+            border: none !important;
+            font-weight: 600 !important;
+        }
+        
+        [data-testid="stForm"] button[kind="primaryFormSubmit"]:hover {
+            background: linear-gradient(135deg, #D4AF37 0%, #C9A227 100%) !important;
+        }
+        
+        /* Labels styling */
+        [data-testid="stForm"] label {
+            color: #5D4E37 !important;
+            font-weight: 500 !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -173,16 +220,16 @@ def render_calculator_suggestion(calculator_info: Dict[str, Any]) -> bool:
     
     st.markdown(f"""
         <div style="
-            background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);
-            border: 1px solid #FFB300;
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #FDF6E3 0%, #F5ECD7 100%);
+            border: 2px solid #C9A227;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
             margin: 0.5rem 0;
         ">
             <span style="font-size: 1.2rem;">{icon}</span>
-            <strong>{title}</strong>
+            <strong style="color: #5D4E37;">{title}</strong>
             <br>
-            <small style="color: #666;">{description}</small>
+            <small style="color: #7D6E57;">{description}</small>
         </div>
     """, unsafe_allow_html=True)
     
