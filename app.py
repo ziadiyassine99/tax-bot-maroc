@@ -12,6 +12,8 @@ from vector_store import VectorStoreManager, create_vector_store_manager
 from rag_chain import RAGChainBuilder, RAGQueryHandler, create_rag_chain
 from article_tooltip import extract_article_citations, format_response_with_tooltips
 from auth import init_auth_state, is_authenticated, render_login_page, logout
+from calculators import should_show_calculator, render_calculator_card, get_suggested_calculators
+from calculators.ui import render_calculator_suggestion
 
 
 # =============================================================================
@@ -655,6 +657,23 @@ def render_chat_page(module_id: str):
                             <div class="source-content">{content_preview}</div>
                         </div>
                         """, unsafe_allow_html=True)
+            
+            # Check if a calculator should be shown for this query
+            show_calc, calc_id, calc_score = should_show_calculator(prompt)
+            if show_calc and calc_id:
+                st.markdown("---")
+                st.markdown("### 🧮 Outil de calcul recommandé")
+                render_calculator_card(calc_id, expanded=True)
+            
+            # Check for suggested calculators based on query and response
+            suggested_calcs = get_suggested_calculators(prompt, response)
+            if suggested_calcs and not show_calc:  # Don't show suggestions if main calc already shown
+                st.markdown("---")
+                st.markdown("**💡 Calculateurs utiles:**")
+                for calc_info in suggested_calcs[:2]:  # Max 2 suggestions
+                    if render_calculator_suggestion(calc_info):
+                        # User clicked to open this calculator
+                        render_calculator_card(calc_info['id'], expanded=True)
         
         # Extract article citations and fetch their content for tooltips
         article_nums = extract_article_citations(response)
