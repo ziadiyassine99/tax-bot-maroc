@@ -12,8 +12,7 @@ from vector_store import VectorStoreManager, create_vector_store_manager
 from rag_chain import RAGChainBuilder, RAGQueryHandler, create_rag_chain
 from article_tooltip import extract_article_citations, format_response_with_tooltips
 from auth import init_auth_state, is_authenticated, render_login_page, logout
-from calculators import should_show_calculator, render_calculator_card, get_suggested_calculators
-from calculators.ui import render_calculator_suggestion
+from calculators import should_show_calculator, render_calculator_card, get_suggested_calculators, render_calculator_suggestion
 
 
 # =============================================================================
