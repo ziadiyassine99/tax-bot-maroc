@@ -242,47 +242,6 @@ def apply_golden_theme():
             font-weight: 600;
         }
         
-        /* Sources panel styling */
-        .sources-container {
-            background: linear-gradient(135deg, #F0F4F8 0%, #E8ECF0 100%);
-            border: 1px solid #B8C4CE;
-            border-radius: 12px;
-            padding: 0.75rem 1rem;
-            margin-top: 0.5rem;
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .sources-header {
-            color: #4A5568;
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-        
-        .source-chunk {
-            background: #FFFFFF;
-            border: 1px solid #CBD5E0;
-            border-radius: 8px;
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            font-size: 0.8rem;
-        }
-        
-        .source-title {
-            color: #2D3748;
-            font-weight: 600;
-            font-size: 0.85rem;
-            margin-bottom: 0.25rem;
-        }
-        
-        .source-content {
-            color: #4A5568;
-            font-size: 0.8rem;
-            line-height: 1.4;
-            max-height: 100px;
-            overflow-y: auto;
-        }
-        
         /* Article link - hoverable with tooltip */
         .article-link {
             color: #8B6914;
@@ -358,8 +317,6 @@ def init_session_state():
         st.session_state.current_module = None
     if "messages" not in st.session_state:
         st.session_state.messages = {}
-    if "sources" not in st.session_state:
-        st.session_state.sources = {}  # Store sources for each message
     if "module_initialized" not in st.session_state:
         st.session_state.module_initialized = {}
     if "cached_articles" not in st.session_state:
@@ -585,35 +542,14 @@ def render_chat_page(module_id: str):
     
     st.markdown("---")
     
-    # Chat history - display messages with their sources
-    for idx, message in enumerate(st.session_state.messages.get(module_id, [])):
+    # Chat history
+    for message in st.session_state.messages.get(module_id, []):
         with st.chat_message(message["role"]):
             # For assistant messages, check if we have formatted content with tooltips
             if message["role"] == "assistant" and "formatted_content" in message:
                 st.markdown(message["formatted_content"], unsafe_allow_html=True)
             else:
                 st.markdown(message["content"])
-            
-            # Show sources for assistant messages (except the initial greeting)
-            if message["role"] == "assistant" and idx > 0:
-                sources_key = f"{module_id}_{idx}"
-                if sources_key in st.session_state.sources:
-                    sources = st.session_state.sources[sources_key]
-                    if sources:
-                        with st.expander(f"📚 Sources consultées ({len(sources)} documents)", expanded=False):
-                            for i, source in enumerate(sources, 1):
-                                doc_name = source.get("source", "Document")
-                                page = source.get("page", "N/A")
-                                content = source.get("content", "")[:400]
-                                if len(source.get("content", "")) > 400:
-                                    content += "..."
-                                
-                                st.markdown(f"""
-                                <div class="source-chunk">
-                                    <div class="source-title">📄 Source {i} - {doc_name} (Page {page})</div>
-                                    <div class="source-content">{content}</div>
-                                </div>
-                                """, unsafe_allow_html=True)
     
     # Chat input
     if prompt := st.chat_input(f"Posez votre question sur le {module_config['short_name']}..."):
@@ -629,33 +565,6 @@ def render_chat_page(module_id: str):
             
             # Stream the response
             response = st.write_stream(query_handler.stream(prompt, conversation_history=conversation_history))
-            
-            # Get source documents after streaming
-            source_docs = query_handler.get_source_documents(prompt, k=5)
-            
-            # Format sources for display and storage
-            formatted_sources = []
-            for doc in source_docs:
-                formatted_sources.append({
-                    "source": doc.metadata.get("source", "Document").split("\\")[-1].split("/")[-1],  # Get filename
-                    "page": doc.metadata.get("page", "N/A"),
-                    "content": doc.page_content
-                })
-            
-            # Display sources in expander
-            if formatted_sources:
-                with st.expander(f"📚 Sources consultées ({len(formatted_sources)} documents)", expanded=False):
-                    for i, source in enumerate(formatted_sources, 1):
-                        content_preview = source["content"][:400]
-                        if len(source["content"]) > 400:
-                            content_preview += "..."
-                        
-                        st.markdown(f"""
-                        <div class="source-chunk">
-                            <div class="source-title">📄 Source {i} - {source['source']} (Page {source['page']})</div>
-                            <div class="source-content">{content_preview}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
             
             # Check if a calculator should be shown for this query
             show_calc, calc_id, calc_score = should_show_calculator(prompt)
@@ -701,11 +610,6 @@ def render_chat_page(module_id: str):
             "formatted_content": formatted_response
         })
         
-        # Store sources with message index
-        msg_idx = len(st.session_state.messages[module_id]) - 1
-        sources_key = f"{module_id}_{msg_idx}"
-        st.session_state.sources[sources_key] = formatted_sources
-        
         # Rerun to display the formatted message with tooltips
         st.rerun()
     
@@ -714,10 +618,6 @@ def render_chat_page(module_id: str):
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         if st.button("🗑️ Nouvelle conversation", use_container_width=True):
-            # Clear sources for this module
-            keys_to_remove = [k for k in st.session_state.sources if k.startswith(f"{module_id}_")]
-            for k in keys_to_remove:
-                del st.session_state.sources[k]
             st.session_state.messages[module_id] = [st.session_state.messages[module_id][0]]
             st.rerun()
 
