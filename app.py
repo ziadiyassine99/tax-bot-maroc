@@ -550,6 +550,12 @@ def render_chat_page(module_id: str):
                 st.markdown(message["formatted_content"], unsafe_allow_html=True)
             else:
                 st.markdown(message["content"])
+            
+            # Re-render calculator if one was shown with this message
+            if message["role"] == "assistant" and message.get("calculator_id"):
+                st.markdown("---")
+                st.markdown("### 🧮 Outil de calcul recommandé")
+                render_calculator_card(message["calculator_id"], expanded=True)
     
     # Chat input
     if prompt := st.chat_input(f"Posez votre question sur le {module_config['short_name']}..."):
@@ -568,6 +574,8 @@ def render_chat_page(module_id: str):
             
             # Check if a calculator should be shown for this query
             show_calc, calc_id, calc_score = should_show_calculator(prompt)
+            matched_calc_id = calc_id if show_calc else None
+            
             if show_calc and calc_id:
                 st.markdown("---")
                 st.markdown("### 🧮 Outil de calcul recommandé")
@@ -607,7 +615,8 @@ def render_chat_page(module_id: str):
         st.session_state.messages[module_id].append({
             "role": "assistant", 
             "content": response,
-            "formatted_content": formatted_response
+            "formatted_content": formatted_response,
+            "calculator_id": matched_calc_id  # Store calculator ID for re-rendering after rerun
         })
         
         # Rerun to display the formatted message with tooltips
